@@ -5,7 +5,7 @@
  */
 package edu.virginia.cs.interfaces;
 
-import java.util.List;
+import java.util.HashMap;
 
 /**
  *
@@ -13,9 +13,9 @@ import java.util.List;
  */
 public interface Tree {
 
-    public List<TreeNode> getListOfNodes();
+    public HashMap<String, TreeNode> getNodeMap();
 
-    public void addNode(TreeNode node);
+    public void addNode(String nodePath, TreeNode node);
 
-    public void setNodes(List<TreeNode> nodes);
+    public void setNodes(HashMap<String, TreeNode> nodeMap);
 }

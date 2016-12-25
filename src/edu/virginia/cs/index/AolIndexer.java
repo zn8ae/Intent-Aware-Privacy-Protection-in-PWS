@@ -1,4 +1,4 @@
-package edu.virginia.cs.io;
+package edu.virginia.cs.index;
 
 import edu.virginia.cs.utility.SpecialAnalyzer;
 import edu.virginia.cs.utility.TextTokenizer;
@@ -58,7 +58,6 @@ public class AolIndexer {
             AolHandler handler = new AolHandler(indexPath);
 //            saxParser.parse(inputStream, handler);
             saxParser.parse(fis, handler);
-
             handler.finish();
         } catch (SAXException | IOException ex) {
             Logger.getLogger(AolIndexer.class.getName()).log(Level.SEVERE, null, ex);
@@ -66,7 +65,7 @@ public class AolIndexer {
     }
 
     public static void main(String[] args) throws IOException {
-        AolIndexer indexer = new AolIndexer("lucene-AOL-index", "./data/xml/AolCrawledData.xml");
+        AolIndexer indexer = new AolIndexer("../lucene-AOL-index", "./data/AolCrawledData.xml");
         indexer.createIndex();
     }
 }
@@ -79,7 +78,6 @@ class AolHandler extends DefaultHandler {
     private String currentURL;
     private boolean isContent;
     private int pagesCompleted;
-    private final TextTokenizer tokenizer;
 
     public AolHandler(String indexPath) throws IOException {
         content = new StringBuilder();
@@ -87,7 +85,6 @@ class AolHandler extends DefaultHandler {
         _contentFieldType.setIndexed(true);
         _contentFieldType.setStored(true);
         pagesCompleted = 0;
-        tokenizer = new TextTokenizer(true, true);
         setupIndex(indexPath);
     }
 
@@ -125,14 +122,6 @@ class AolHandler extends DefaultHandler {
             isContent = true;
             content.setLength(0);
         }
-    }
-
-    private String getModifiedContent() {
-        String modifiedContent = "";
-        for (String token : tokenizer.TokenizeText(content.toString())) {
-            modifiedContent += token + " ";
-        }
-        return modifiedContent.trim();
     }
 
     @Override

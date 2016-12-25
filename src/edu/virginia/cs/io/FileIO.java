@@ -23,7 +23,7 @@ import java.util.Map;
  */
 public class FileIO {
 
-    public void appnedToFile(String filename, String line) throws IOException {
+    public static void appnedToFile(String filename, String line) throws IOException {
         File file = new File(filename);
         FileWriter fileWritter = new FileWriter(file.getAbsolutePath(), true);
         BufferedWriter bw = new BufferedWriter(fileWritter);
@@ -31,7 +31,7 @@ public class FileIO {
         bw.close();
     }
 
-    public void appnedToFile(String filename, List<Map.Entry<String, Integer>> param, int choice) throws IOException {
+    public static void appnedToFile(String filename, List<Map.Entry<String, Integer>> param, int choice) throws IOException {
         FileWriter fw = new FileWriter(filename);
         if (choice == 1) {
             for (Map.Entry<String, Integer> entry : param) {
@@ -45,7 +45,7 @@ public class FileIO {
         fw.close();
     }
 
-    public void storeInFile(String filename, List<Map.Entry<String, Double>> param) throws IOException {
+    public static void storeInFile(String filename, List<Map.Entry<String, Double>> param) throws IOException {
         File file = new File(filename);
         FileWriter fw = new FileWriter(file.getAbsolutePath());
         BufferedWriter bw = new BufferedWriter(fw);
@@ -55,7 +55,7 @@ public class FileIO {
         bw.close();
     }
 
-    public void storeInFile(String filename, HashMap<String, ArrayList<String>> param) throws IOException {
+    public static void storeInFile(String filename, HashMap<String, ArrayList<String>> param) throws IOException {
         FileWriter fw = new FileWriter(filename);
         for (Map.Entry<String, ArrayList<String>> entry : param.entrySet()) {
             String finalStr = "";
@@ -67,7 +67,7 @@ public class FileIO {
         fw.close();
     }
 
-    public void storeHashMapInFile(String filename, HashMap<String, Float> param) throws IOException {
+    public static void storeHashMapInFile(String filename, HashMap<String, Float> param) throws IOException {
         FileWriter fw = new FileWriter(filename);
         for (Map.Entry<String, Float> entry : param.entrySet()) {
             fw.write(entry.getKey() + " " + entry.getValue() + "\n");
@@ -75,7 +75,7 @@ public class FileIO {
         fw.close();
     }
 
-    public String LoadFile(String filename) {
+    public static String LoadFile(String filename) {
         try {
             BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(filename), "UTF-8"));
             StringBuilder builder = new StringBuilder(1024);
@@ -96,7 +96,7 @@ public class FileIO {
         }
     }
 
-    public ArrayList<String> LoadFile(String filename, int numberOfLines) {
+    public static ArrayList<String> LoadFile(String filename, int numberOfLines) {
         try {
             BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(filename), "UTF-8"));
             ArrayList<String> lines = new ArrayList<>();

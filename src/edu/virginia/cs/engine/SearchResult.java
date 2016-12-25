@@ -1,5 +1,6 @@
 package edu.virginia.cs.engine;
 
+import edu.virginia.cs.object.ResultDoc;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -57,7 +58,7 @@ public class SearchResult {
      * @param snippet
      */
     public void setSnippet(ResultDoc rdoc, String snippet) {
-        htmlSnippets.put(rdoc.id(), snippet);
+        htmlSnippets.put(rdoc.getId(), snippet);
     }
 
     /**
@@ -65,7 +66,7 @@ public class SearchResult {
      * @return the snippets for the given document
      */
     public String getSnippet(ResultDoc rdoc) {
-        return htmlSnippets.get(rdoc.id());
+        return htmlSnippets.get(rdoc.getId());
     }
 
     /**

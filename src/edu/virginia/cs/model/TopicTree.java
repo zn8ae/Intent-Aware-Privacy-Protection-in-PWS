@@ -5,10 +5,9 @@
  */
 package edu.virginia.cs.model;
 
-import java.util.ArrayList;
 import edu.virginia.cs.interfaces.Tree;
 import edu.virginia.cs.interfaces.TreeNode;
-import java.util.List;
+import java.util.HashMap;
 
 /**
  *
@@ -16,28 +15,25 @@ import java.util.List;
  */
 public class TopicTree implements Tree {
 
-    ArrayList<TreeNode> nodes;
+    private HashMap<String, TreeNode> nodeMap;
 
     @Override
-    public void setNodes(List<TreeNode> nodes) {
-        this.nodes = new ArrayList<>(nodes);
+    public void setNodes(HashMap<String, TreeNode> nodeMap) {
+        this.nodeMap = nodeMap;
     }
 
-    public TreeNode getTopicByIndex(int index) {
-        if (nodes != null && nodes.size() > index) {
-            return nodes.get(index);
-        }
-        return null;
+    public TreeNode getTreeNode(String name) {
+        return this.nodeMap.get(name);
     }
 
     @Override
-    public List<TreeNode> getListOfNodes() {
-        return this.nodes;
+    public HashMap<String, TreeNode> getNodeMap() {
+        return this.nodeMap;
     }
 
     @Override
-    public void addNode(TreeNode node) {
-        this.nodes.add(node);
+    public void addNode(String nodePath, TreeNode node) {
+        this.nodeMap.put(nodePath, node);
     }
 
 }

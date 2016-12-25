@@ -5,6 +5,8 @@
  */
 package edu.virginia.cs.object;
 
+import java.util.Date;
+
 /**
  *
  * @author wua4nw
@@ -12,6 +14,8 @@ package edu.virginia.cs.object;
 public class Session {
 
     private int session_id;
+    private Date start_time;
+    private Date end_time;
 
     public Session(int id) {
         this.session_id = id;
@@ -23,6 +27,22 @@ public class Session {
 
     public void setSession_id(int session_id) {
         this.session_id = session_id;
+    }
+
+    public void setStartTime(Date startTime) {
+        this.start_time = startTime;
+    }
+
+    public Date getStartTime() {
+        return this.start_time;
+    }
+
+    public void setEndTime(Date endTime) {
+        this.end_time = endTime;
+    }
+
+    public Date getEndTime() {
+        return this.end_time;
     }
 
 }

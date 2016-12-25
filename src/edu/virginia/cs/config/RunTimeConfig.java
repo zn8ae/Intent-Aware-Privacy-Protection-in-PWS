@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package edu.cs.virginia.config;
+package edu.virginia.cs.config;
 
 /**
  *
@@ -14,4 +14,5 @@ public class RunTimeConfig {
     public static int NumberOfCoverQuery;
     public static int NumberOfThreads;
     public static boolean ClientSideRanking;
+    public static int TotalDocInWeb;
 }

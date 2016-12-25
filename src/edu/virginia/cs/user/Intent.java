@@ -5,10 +5,8 @@
  */
 package edu.virginia.cs.user;
 
-import edu.cs.virginia.config.StaticData;
+import edu.virginia.cs.config.StaticData;
 import edu.virginia.cs.interfaces.TreeNode;
-import edu.virginia.cs.object.Document;
-import edu.virginia.cs.object.Query;
 import edu.virginia.cs.utility.SortMap;
 import edu.virginia.cs.utility.TextTokenizer;
 import java.util.ArrayList;
@@ -28,20 +26,26 @@ public class Intent implements TreeNode {
     private final History history;
 
     private final TextTokenizer _tokenizer;
-    private final ArrayList<Query> submittedQueries;
 
     private double totalQueryLength;
     private double totalQuery;
     private int totalTokens;
 
-    public Intent() {
+    private final String intentName;
+
+    public Intent(String name) {
         history = new History();
-        this.submittedQueries = new ArrayList<>();
+
         this._tokenizer = new TextTokenizer(true, true);
+        this.intentName = name;
 
         totalTokens = 0;
         totalQuery = 0;
         totalQueryLength = 0;
+    }
+
+    public String getName() {
+        return this.intentName;
     }
 
     @Override
@@ -83,24 +87,8 @@ public class Intent implements TreeNode {
         return level;
     }
 
-    public boolean isEmpty() {
-        return submittedQueries.isEmpty();
-    }
-
     public int getTotalTokenCount() {
         return totalTokens;
-    }
-
-    public ArrayList<Query> getSubmittedQueries() {
-        return submittedQueries;
-    }
-
-    public void addQuery(Query query) {
-        this.submittedQueries.add(query);
-        updateUsingSubmittedQuery(query.getQuery_text());
-        for (Document doc : query.getClicked_documents()) {
-            updateUsingClickedDoc(doc.getDocument_text());
-        }
     }
 
     public History getHistory() {
@@ -123,10 +111,9 @@ public class Intent implements TreeNode {
     /**
      * Update user profile by the user submitted query.
      *
-     * @param query
-     * @throws java.io.IOException
+     * @param queryText
      */
-    private void updateUsingSubmittedQuery(String queryText) {
+    public void updateUsingSubmittedQuery(String queryText) {
         List<String> qParts = _tokenizer.TokenizeText(queryText);
         totalQuery++;
         totalQueryLength = totalQueryLength + qParts.size();

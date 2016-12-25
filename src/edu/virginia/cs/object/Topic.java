@@ -5,7 +5,7 @@
  */
 package edu.virginia.cs.object;
 
-import edu.cs.virginia.config.StaticData;
+import edu.virginia.cs.config.StaticData;
 import edu.virginia.cs.utility.SortMap;
 import java.util.HashMap;
 import java.util.List;

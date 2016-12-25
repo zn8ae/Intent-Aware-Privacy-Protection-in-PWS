@@ -3,17 +3,12 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package edu.virginia.cs.main;
-
-import edu.virginia.cs.user.Profile;
+package edu.virginia.cs.model;
 
 /**
  *
  * @author wua4nw
  */
-public class Test {
+public class GenerateCoverQuery {
 
-    public static void main(String[] args) {
-        Profile p = new Profile(1);
-    }
 }

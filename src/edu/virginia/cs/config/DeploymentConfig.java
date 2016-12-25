@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package edu.cs.virginia.config;
+package edu.virginia.cs.config;
 
 /**
  *
@@ -11,11 +11,9 @@ package edu.cs.virginia.config;
  */
 public class DeploymentConfig {
 
-    public static String LuceneIndexPath;
+    public static String AolIndexPath;
+    public static String OdpIndexPath;
     public static String UserSearchLogPath;
-    public static String LanguageModelPath;
     public static String ReferenceModelPath;
-    public static String AOLDictionaryPath;
-    public static String TermIndexPath;
-
+    public static String AolDocFreqRecord;
 }

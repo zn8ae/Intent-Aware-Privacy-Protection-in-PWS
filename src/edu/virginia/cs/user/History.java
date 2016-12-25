@@ -6,6 +6,7 @@
 package edu.virginia.cs.user;
 
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  *
@@ -47,6 +48,25 @@ public class History {
         } else {
             selectedDocTerms.put(key, value);
         }
+    }
+
+    public HashMap<String, Integer> getCompleteHistory() {
+        HashMap<String, Integer> completeHistory = new HashMap<>();
+        for (Map.Entry<String, Integer> entry : selectedQueryTerms.entrySet()) {
+            if (completeHistory.containsKey(entry.getKey())) {
+                completeHistory.put(entry.getKey(), completeHistory.get(entry.getKey()) + entry.getValue());
+            } else {
+                completeHistory.put(entry.getKey(), entry.getValue());
+            }
+        }
+        for (Map.Entry<String, Integer> entry : selectedDocTerms.entrySet()) {
+            if (completeHistory.containsKey(entry.getKey())) {
+                completeHistory.put(entry.getKey(), completeHistory.get(entry.getKey()) + entry.getValue());
+            } else {
+                completeHistory.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return completeHistory;
     }
 
 }

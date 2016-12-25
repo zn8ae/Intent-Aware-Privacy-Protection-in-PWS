@@ -5,13 +5,14 @@
  */
 package edu.virginia.cs.user;
 
-import edu.cs.virginia.config.StaticData;
+import edu.virginia.cs.config.StaticData;
 import edu.virginia.cs.interfaces.Tree;
 import edu.virginia.cs.interfaces.TreeNode;
+import edu.virginia.cs.object.ResultDoc;
+import edu.virginia.cs.object.UserQuery;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -20,31 +21,101 @@ import java.util.Map;
  */
 public class Profile implements Tree {
 
-    private final int userId;
-    private ArrayList<TreeNode> intents;
+    private final String userId;
+    private HashMap<String, TreeNode> intents;
+    private final ArrayList<UserQuery> submittedQueries;
     private int totalTokenCount;
+    private final TreeNode root;
 
-    public Profile(int id) {
+    public Profile(String id) {
+        this.submittedQueries = new ArrayList<>();
         this.userId = id;
-        this.intents = new ArrayList<>();
+        this.intents = new HashMap<>();
+        this.root = new Intent("Top");
+        this.root.setNodeLevel(0);
+        this.root.setParent(null);
+    }
+
+    public boolean isEmpty() {
+        return submittedQueries.isEmpty();
+    }
+
+    public ArrayList<UserQuery> getSubmittedQueries() {
+        return submittedQueries;
+    }
+
+    public UserQuery getQuery(int index) {
+        if (index < submittedQueries.size()) {
+            return submittedQueries.get(index);
+        } else {
+            return null;
+        }
+    }
+
+    public void addQuery(UserQuery query) {
+        this.submittedQueries.add(query);
+        query.getQuery_intent().updateUsingSubmittedQuery(query.getQuery_text());
+        for (ResultDoc doc : query.getRelevant_documents()) {
+            if (doc.isClicked()) {
+                query.getQuery_intent().updateUsingClickedDoc(doc.getContent());
+            }
+        }
+    }
+
+    public int checkRepeatInCurrentSession(UserQuery query) {
+        int query_index = -1;
+        for (int i = submittedQueries.size() - 1; i >= 0; i--) {
+            if (submittedQueries.get(i).getQuery_session().getSession_id() == query.getQuery_session().getSession_id()) {
+                if (submittedQueries.get(i).getQuery_text().equals(query.getQuery_text())) {
+                    query_index = i;
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+        return query_index;
+    }
+
+    public void addBranch(String path) {
+        if (!branchExists(path)) {
+            String[] nodes = path.split("/");
+            String temp = nodes[0];
+            TreeNode parent = root;
+            for (int i = 1; i < nodes.length; i++) {
+                temp += "/" + nodes[i];
+                if (!branchExists(temp)) {
+                    TreeNode node = new Intent(temp);
+                    node.setParent(parent);
+                    node.setNodeLevel(parent.getNodeLevel() + 1);
+                    parent.addChildrens(node);
+                    parent = node;
+                    intents.put(temp, node);
+                }
+            }
+        }
+    }
+
+    public boolean branchExists(String path) {
+        return intents.containsKey(path);
     }
 
     @Override
-    public List<TreeNode> getListOfNodes() {
-        return intents;
+    public HashMap<String, TreeNode> getNodeMap() {
+        return this.intents;
     }
 
     @Override
-    public void addNode(TreeNode node) {
-        intents.add(node);
+    public void addNode(String nodePath, TreeNode node) {
+        this.intents.put(nodePath, node);
     }
 
     @Override
-    public void setNodes(List<TreeNode> nodes) {
-        intents = new ArrayList<>(nodes);
+    public void setNodes(HashMap<String, TreeNode> nodeMap) {
+        this.intents = nodeMap;
     }
 
-    public int getUserId() {
+    public String getUserId() {
         return userId;
     }
 
@@ -55,7 +126,8 @@ public class Profile implements Tree {
     public HashMap<String, Integer> getCompleteHistory() {
         HashMap<String, Integer> completeHistory = new HashMap<>();
         totalTokenCount = 0;
-        for (TreeNode node : intents) {
+        for (String key : intents.keySet()) {
+            TreeNode node = intents.get(key);
             for (Map.Entry<String, Integer> entry : ((Intent) node).getHistory().getSelectedQueryTerms().entrySet()) {
                 if (completeHistory.containsKey(entry.getKey())) {
                     completeHistory.put(entry.getKey(), completeHistory.get(entry.getKey()) + entry.getValue());
@@ -74,6 +146,32 @@ public class Profile implements Tree {
             }
         }
         return completeHistory;
+    }
+
+    public HashMap<String, Integer> getBranchHistory(Intent intent) {
+        HashMap<String, Integer> branchHistory = new HashMap<>();
+        Intent target_intent = (Intent) intents.get(intent.getName());
+        totalTokenCount = 0;
+        while (target_intent != null) {
+            for (Map.Entry<String, Integer> entry : target_intent.getHistory().getSelectedQueryTerms().entrySet()) {
+                if (branchHistory.containsKey(entry.getKey())) {
+                    branchHistory.put(entry.getKey(), branchHistory.get(entry.getKey()) + entry.getValue());
+                } else {
+                    branchHistory.put(entry.getKey(), entry.getValue());
+                }
+                totalTokenCount += entry.getValue();
+            }
+            for (Map.Entry<String, Integer> entry : target_intent.getHistory().getSelectedDocTerms().entrySet()) {
+                if (branchHistory.containsKey(entry.getKey())) {
+                    branchHistory.put(entry.getKey(), branchHistory.get(entry.getKey()) + entry.getValue());
+                } else {
+                    branchHistory.put(entry.getKey(), entry.getValue());
+                }
+                totalTokenCount += entry.getValue();
+            }
+            target_intent = (Intent) target_intent.getParent();
+        }
+        return branchHistory;
     }
 
     /**
