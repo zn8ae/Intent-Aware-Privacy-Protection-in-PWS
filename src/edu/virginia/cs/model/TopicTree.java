@@ -18,10 +18,11 @@ import java.util.List;
 public class TopicTree implements Tree {
 
     private HashMap<String, TreeNode> nodeMap;
-    private HashMap<Integer, List<TreeNode>> levelWiseNodeMap;
+    private final HashMap<Integer, List<TreeNode>> levelWiseNodeMap;
 
     public TopicTree() {
         this.nodeMap = new HashMap<>();
+        this.levelWiseNodeMap = new HashMap<>();
     }
 
     @Override
@@ -45,9 +46,9 @@ public class TopicTree implements Tree {
     @Override
     public void addNode(String nodePath, TreeNode node) {
         this.nodeMap.put(nodePath, node);
-        if(levelWiseNodeMap.containsKey(node.getNodeLevel())){
+        if (levelWiseNodeMap.containsKey(node.getNodeLevel())) {
             levelWiseNodeMap.get(node.getNodeLevel()).add(node);
-        }else{
+        } else {
             List<TreeNode> nodeList = new ArrayList<>();
             nodeList.add(node);
             levelWiseNodeMap.put(node.getNodeLevel(), nodeList);

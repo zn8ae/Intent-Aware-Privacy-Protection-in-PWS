@@ -18,6 +18,7 @@ import edu.virginia.cs.user.Profile;
 import edu.virginia.cs.utility.TextTokenizer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  *
@@ -63,6 +64,10 @@ public class GenerateCoverQuery {
      * @return list of integers
      */
     private int getBucketNumber(TopicTreeNode queryTopicNode, UserQuery query) {
+        if (queryTopicNode == null) {
+            System.out.println("Error found");
+            System.out.println(query.getQuery_text());
+        }
         Topic topic = queryTopicNode.getTopic();
         List<String> tokens = tokenizer.TokenizeText(query.getQuery_text());
         String modifiedQuery = "";
@@ -157,6 +162,11 @@ public class GenerateCoverQuery {
          * Check if current query intent is the parent of previous query intent,
          * then sequential editing is true.
          */
+//        System.out.println(previousQuery.getQuery_intent().getName());
+//        Intent temp = previousQuery.getQuery_intent();
+//        if (temp.getParent() == null) {
+//            System.out.println(((Intent) previousQuery.getQuery_intent().getParent()).getName());
+//        }
         if (currentQuery.getQuery_intent().isParent(previousQuery.getQuery_intent())) {
             return 1;
         }
@@ -200,14 +210,17 @@ public class GenerateCoverQuery {
         return coverQuery;
     }
 
-    public ArrayList<UserQuery> generateCoverQueries(Profile profile, UserQuery query, int numCQuery) {
+    public ArrayList<UserQuery> generateCoverQueries(Profile profile, UserQuery query) {
         ArrayList<UserQuery> coverQueries = new ArrayList<>();
         /* step 1. get the topic of user query */
         String topic_name = query.getQuery_intent().getName();
         TopicTreeNode topicNode = (TopicTreeNode) topicTree.getTreeNode(topic_name);
 
         /* step 2. infer the bucket number for the user query */
-        int bucket_num = getBucketNumber((TopicTreeNode) topicTree.getTreeNode(topic_name), query);
+        if (topicNode == null) {
+            System.out.println("topic node not found : " + topic_name);
+        }
+        int bucket_num = getBucketNumber(topicNode, query);
 
         /* step 3. check if the current query is sequentially edited */
         UserQuery lastSubmittedQuery = profile.getLastSubmittedQuery();
@@ -229,7 +242,7 @@ public class GenerateCoverQuery {
             UserQuery coverQuery = null;
             if (isSeqEdited == 0) {
                 /* Current query is not sequentially edited. */
-                if (count < numCQuery / 2 && fromSiblingPossible) {
+                if (count < RunTimeConfig.NumberOfCoverQuery / 2 && fromSiblingPossible) {
                     /* Generating cover query from sibling topics. */
                     TopicTreeNode cover_node = getCoverQueryTopic(topicNode, true);
                     if (cover_node == null) {
@@ -296,15 +309,16 @@ public class GenerateCoverQuery {
             }
 
             if (coverQuery != null) {
+                coverQuery.setQuery_time(query.getQuery_time());
                 coverQueries.add(coverQuery);
                 count++;
             }
 
-            if (count == numCQuery && isSeqEdited == 0) {
+            if (count == RunTimeConfig.NumberOfCoverQuery && isSeqEdited == 0) {
                 break;
             } else if (isSeqEdited != 0 && previousCoverQueries != null && count == previousCoverQueries.size()) {
                 break;
-            } else if (numberOfAttempts == (numCQuery * 10)) {
+            } else if (numberOfAttempts == (RunTimeConfig.NumberOfCoverQuery * 10)) {
                 break;
             }
             numberOfAttempts++;

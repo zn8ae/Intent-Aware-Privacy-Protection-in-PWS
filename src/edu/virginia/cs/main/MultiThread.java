@@ -18,7 +18,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.xml.parsers.ParserConfigurationException;
@@ -31,8 +30,6 @@ import org.xml.sax.SAXException;
  * @author Wasi
  */
 public class MultiThread {
-
-    private HashMap<String, Float> referenceModel;
 
     public static void main(String[] args) throws Exception {
         MultiThread ml = new MultiThread();
@@ -60,6 +57,7 @@ public class MultiThread {
             DeploymentConfig.ReferenceModelPath = br.readLine().replace("reference model file =", "").trim();
             DeploymentConfig.AolDocFreqRecord = br.readLine().replace("AOL document frequency record =", "").trim();
             DeploymentConfig.OdpHierarchyRecord = br.readLine().replace("ODP hierarchy file =", "").trim();
+            DeploymentConfig.BackgroundKnowledge = br.readLine().replace("background knowledge file =", "").trim();
             br.close();
         } catch (IOException ex) {
             Logger.getLogger(MultiThread.class.getName()).log(Level.SEVERE, null, ex);
@@ -87,7 +85,6 @@ public class MultiThread {
     private TopicTree createTopicTree(int depth) {
         TopicTree topicTree = null;
         try {
-
             SAXParserFactory factory = SAXParserFactory.newInstance();
             SAXParser saxParser = factory.newSAXParser();
 
@@ -117,7 +114,6 @@ public class MultiThread {
 
                 if (split.length >= 2) {
                     String parent = currentTopic.substring(0, currentTopic.lastIndexOf("/"));
-
                     if (topicTree.exists(parent)) {
                         node.setParent(topicTree.getTreeNode(parent));
                         topicTree.getTreeNode(parent).addChildren(node);
@@ -136,9 +132,7 @@ public class MultiThread {
         } catch (ParserConfigurationException | SAXException ex) {
             Logger.getLogger(MultiThread.class.getName()).log(Level.SEVERE, null, ex);
         }
-
         return topicTree;
-
     }
 
     /**
@@ -160,6 +154,7 @@ public class MultiThread {
                 System.err.println("Failed to load ODP category hierarchy");
                 System.exit(1);
             }
+            System.out.println("Topic tree loaded... " + tree.getNodesOfLevel(3).size());
 
             int limit = allUserId.size() / RunTimeConfig.NumberOfThreads;
             for (int i = 0; i < RunTimeConfig.NumberOfThreads; i++) {
@@ -176,10 +171,12 @@ public class MultiThread {
             for (int i = 0; i < RunTimeConfig.NumberOfThreads; i++) {
                 myT[i].getThread().join();
             }
+
             /* When all threads finished its execution, generate final result */
             double totalKLDivergence = 0.0;
             double totalMI = 0.0;
             double totalMAP = 0.0;
+            double totalGoA = 0.0;
             int totalUsers = 0;
             double totalQueries = 0;
             for (int i = 0; i < RunTimeConfig.NumberOfThreads; i++) {
@@ -189,10 +186,12 @@ public class MultiThread {
                 totalMAP += Double.valueOf(result[2]);
                 totalKLDivergence += Double.valueOf(result[3]);
                 totalMI += Double.valueOf(result[4]);
+                totalGoA += Double.valueOf(result[5]);
             }
             double finalKL = totalKLDivergence / totalUsers;
             double finalMI = totalMI / totalUsers;
             double finalMAP = totalMAP / totalQueries;
+            double finalGoA = totalGoA / totalQueries;
             FileWriter fw = new FileWriter("model-output-files/final_output.txt");
             fw.write("**************Parameter Settings**************\n");
             fw.write("Number of cover queries = " + RunTimeConfig.NumberOfCoverQuery + "\n");
@@ -202,12 +201,12 @@ public class MultiThread {
             fw.write("Averge MAP = " + finalMAP + "\n");
             fw.write("Average KL-Divergence = " + finalKL + "\n");
             fw.write("Average Mutual Information = " + finalMI + "\n");
+            fw.write("Average Goodness of Alignment Score = " + finalGoA + "\n");
             fw.close();
         } catch (InterruptedException | NumberFormatException | IOException ex) {
             Logger.getLogger(MultiThread.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-
 }
 
 class MyThread implements Runnable {

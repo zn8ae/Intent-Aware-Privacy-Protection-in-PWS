@@ -12,6 +12,7 @@ import edu.virginia.cs.user.Profile;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -88,7 +89,7 @@ public class Searcher {
         Intent intent = (Intent) userProfile.getNodeMap().get(query.getQuery_intent().getName());
         if (intent == null) {
             intent = new Intent(query.getQuery_intent().getName());
-            userProfile.addIntent(intent.getName());
+            userProfile.addIntent(intent);
         }
         intent.updateUsingClickedDoc(doc.getContent());
     }
@@ -214,7 +215,12 @@ public class Searcher {
             }
 
             /* Updating the server side user profile with the query */
-            userProfile.addQuery(userQuery);
+            userQuery.setQuery_intent(userProfile.addIntent(userQuery.getQuery_intent()));
+            boolean success = userProfile.addQuery(userQuery);
+            if (!success) {
+                System.err.println("Failed to update server-side user profile and now exiting...");
+                System.exit(1);
+            }
 
             SearchResult searchResult = new SearchResult(searchQuery, docs.totalHits);
             for (ScoreDoc hit : hits) {
@@ -298,16 +304,21 @@ public class Searcher {
     /**
      * Searches for document content in the lucene index.
      *
-     * @param query_text
+     * @param tokens
      * @param field
      * @return hit document's id
      */
-    public int search(String query_text, String field) {
+    public int search(List<String> tokens, String field) {
         int hit_count = 0;
-        Query luceneQuery = new TermQuery(new Term(field, query_text));
+        BooleanQuery combinedQuery = new BooleanQuery();
+        for (String token : tokens) {
+            Query luceneQuery = new TermQuery(new Term(field, token));
+            combinedQuery.add(luceneQuery, BooleanClause.Occur.MUST);
+        }
+
         try {
             TotalHitCountCollector collector = new TotalHitCountCollector();
-            indexSearcher.search(luceneQuery, collector);
+            indexSearcher.search(combinedQuery, collector);
             hit_count = collector.getTotalHits();
         } catch (IOException exception) {
             Logger.getLogger(Searcher.class.getName()).log(Level.SEVERE, null, exception);

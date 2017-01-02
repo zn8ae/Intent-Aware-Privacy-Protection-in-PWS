@@ -83,22 +83,32 @@ public class Profile implements Tree {
         }
     }
 
-    public void addIntent(String intent_name) {
-        if (!intentExists(intent_name)) {
-            String[] nodes = intent_name.split("/");
+    public Intent addIntent(Intent intent) {
+        if (!intentExists(intent.getName())) {
+            String[] nodes = intent.getName().split("/");
             String temp = nodes[0];
             TreeNode parent = root;
             for (int i = 1; i < nodes.length; i++) {
-                temp += "/" + nodes[i];
-                if (!intentExists(temp)) {
+                if (i == nodes.length - 1) {
+                    intent.setParent(parent);
+                    intent.setNodeLevel(parent.getNodeLevel() + 1);
+                    parent.addChildren(intent);
+                    intents.put(intent.getName(), intent);
+                } else {
+                    temp += "/" + nodes[i];
                     TreeNode node = new Intent(temp);
-                    node.setParent(parent);
-                    node.setNodeLevel(parent.getNodeLevel() + 1);
-                    parent.addChildren(node);
+                    if (!intentExists(temp)) {
+                        node.setParent(parent);
+                        node.setNodeLevel(parent.getNodeLevel() + 1);
+                        parent.addChildren(node);
+                        intents.put(temp, node);
+                    }
                     parent = node;
-                    intents.put(temp, node);
                 }
             }
+            return intent;
+        } else {
+            return (Intent) intents.get(intent.getName());
         }
     }
 

@@ -11,7 +11,6 @@ import edu.virginia.cs.extra.Constants;
 import edu.virginia.cs.utility.TextTokenizer;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -44,7 +43,7 @@ public class NMICalculation {
                 return 0;
             }
             List<String> tokens = tokenizer.TokenizeText(query);
-            if (tokens.size() > 0) {
+            if (!tokens.isEmpty()) {
                 int docFreqCount = getDocFrequency(tokens);
                 probQuery = (docFreqCount * 1.0) / RunTimeConfig.TotalDocInWeb;
             }
@@ -62,11 +61,7 @@ public class NMICalculation {
      * @return
      */
     private int getDocFrequency(List<String> tokens) {
-        String query_text = "";
-        for (String token : tokens) {
-            query_text += token + " ";
-        }
-        return _searcher.search(query_text.trim(), Constants.DEFAULT_FIELD);
+        return _searcher.search(tokens, Constants.DEFAULT_FIELD);
     }
 
     /**
@@ -78,6 +73,7 @@ public class NMICalculation {
      * @return
      */
     public double calculateNMI(ArrayList<String> origQuery, ArrayList<String> coverQuery) {
+        double NMI = 0;
         HashMap<String, Double> Px = new HashMap<>();
         HashMap<String, Double> Py = new HashMap<>();
         HashMap<String, Double> Pxy = new HashMap<>();
@@ -123,7 +119,6 @@ public class NMICalculation {
             }
         }
         /* normalized variant of mutual information */
-        double NMI = 0;
         if (muInfo > 0 && Hx > 0 && Hy > 0) {
             NMI = muInfo / (Hx * Hy);
         }

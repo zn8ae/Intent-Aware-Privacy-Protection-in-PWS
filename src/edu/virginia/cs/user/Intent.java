@@ -35,6 +35,7 @@ public class Intent implements TreeNode {
 
     public Intent(String name) {
         history = new History();
+        this.childrens = new ArrayList<>();
 
         this._tokenizer = new TextTokenizer(true, true);
         this.intentName = name;
@@ -59,6 +60,10 @@ public class Intent implements TreeNode {
     }
 
     public boolean isParent(TreeNode node) {
+        Intent intent = (Intent) node.getParent();
+        if (intent == null) {
+            return false;
+        }
         return this.intentName.equals(((Intent) node.getParent()).getName());
     }
 

@@ -27,7 +27,7 @@ import java.io.FileWriter;
 
 public class Evaluate {
 
-    private Searcher _searcher = null;
+    private final Searcher _searcher;
     /* Storing a specific user's queries and corresponding all clicked documents */
     private List<UserQuery> userQueries;
     /* Storing a specific user's all queries */
@@ -40,25 +40,29 @@ public class Evaluate {
     private final GenerateCoverQuery gCoverQuery;
     /* User profile which is constructed and maintained in the client side */
     private Profile profile;
-    /* Total MAP for 'n' users that we are evaluating, ex. in our case, n = 250 */
+    /* Total MAP for 'n' users that we are evaluating, ex. in our case, n = 1000 */
     private double totalMAP = 0.0;
-    /* Total number of queries evaluated for 'n' users, ex. in our case, n = 250 */
+    /* Total number of queries evaluated for 'n' users, ex. in our case, n = 1000 */
     private double totalQueries = 0.0;
-    /* Total KL-Divergence for 'n' users that we are evaluating, ex. in our case, n = 250 */
+    /* Total KL-Divergence for 'n' users that we are evaluating, ex. in our case, n = 1000 */
     private double totalKL = 0;
-    /* Total mutual information for 'n' users that we are evaluating, ex. in our case, n = 250 */
-    private double totalMI = 0;
+    /* Total mutual information for 'n' users that we are evaluating, ex. in our case, n = 1000 */
+    private double totalNMI = 0;
+    /* Total goodness of alignment score for 'n' users that we are evaluating, ex. in our case, n = 1000 */
+    private double totalGoA = 0;
 
     private final NMICalculation computeNMI;
+    private final GoACalculation computeGoA;
 
     public Evaluate(TopicTree tree) {
-        _searcher = new Searcher(DeploymentConfig.AolIndexPath);
-        _searcher.setSimilarity(new OkapiBM25());
+        this._searcher = new Searcher(DeploymentConfig.AolIndexPath);
+        this._searcher.setSimilarity(new OkapiBM25());
         // setting the flag to enable personalization
-        _searcher.activatePersonalization(true);
-        gCoverQuery = new GenerateCoverQuery(tree);
-        classifyIntent = new ClassifyIntent();
-        computeNMI = new NMICalculation(DeploymentConfig.AolIndexPath);
+        this._searcher.activatePersonalization(true);
+        this.gCoverQuery = new GenerateCoverQuery(tree);
+        this.classifyIntent = new ClassifyIntent();
+        this.computeNMI = new NMICalculation(DeploymentConfig.AolIndexPath);
+        this.computeGoA = new GoACalculation(168);
     }
 
     /**
@@ -85,6 +89,7 @@ public class Evaluate {
             loadUserJudgements(userId);
             // initialization for client side user profile
             profile = new Profile(userId);
+            System.out.println("User id: " + userId);
 
             double meanAvgPrec = 0.0;
             // Number of queries evaluated
@@ -142,18 +147,22 @@ public class Evaluate {
             // compute mutual information for the current user
             double mutualInfo = computeNMI.calculateNMI(listOfUserQuery, listOfCoverQuery);
             // totalMI = sum of all MI computed for 'n' users
-            totalMI += mutualInfo;
+            totalNMI += mutualInfo;
+            double GoAScore = computeGoA.evaluateComponents(profile);
+            totalGoA += GoAScore;
             writer.write(countUsers + "\t" + Integer.parseInt(userId) + "\t" + MAP + "\t" + klDivergence + "\t" + mutualInfo + "\n");
             writer.flush();
-            System.out.printf("%-8d\t%-8d\t%-8f\t%.8f\t%.8f\n", countUsers, Integer.parseInt(userId), MAP, klDivergence, mutualInfo);
+            System.out.printf("%-8d\t%-8d\t%-8f\t%.8f\t%.8f\t%.8f\n", countUsers, Integer.parseInt(userId), MAP, klDivergence, mutualInfo, GoAScore);
         }
 
         double avgKL = 0;
         double avgMI = 0;
+        double avgGoA = 0;
         double finalMAP = totalMAP / totalQueries;
         if (countUsers > 0) {
             avgKL = totalKL / countUsers;
-            avgMI = totalMI / countUsers;
+            avgMI = totalNMI / countUsers;
+            avgGoA = totalGoA / countUsers;
         }
 
         writer.write("\n************Result after full pipeline execution for n users**************" + "\n");
@@ -162,10 +171,11 @@ public class Evaluate {
         writer.write("MAP : " + finalMAP + "\n");
         writer.write("Average KL : " + avgKL + "\n");
         writer.write("Average MI : " + avgMI + "\n");
+        writer.write("Average GoA : " + avgGoA + "\n");
         writer.flush();
         writer.close();
 
-        String retValue = countUsers + "\t" + totalQueries + "\t" + totalMAP + "\t" + totalKL + "\t" + totalMI;
+        String retValue = countUsers + "\t" + totalQueries + "\t" + totalMAP + "\t" + totalKL + "\t" + totalNMI + "\t" + totalGoA;
         return retValue;
     }
 
@@ -197,7 +207,7 @@ public class Evaluate {
              */
             UserQuery repeatQuery = profile.getLastSession().checkRepeat(query);
             if (repeatQuery == null) {
-                coverQueries = gCoverQuery.generateCoverQueries(profile, query, RunTimeConfig.NumberOfCoverQuery);
+                coverQueries = gCoverQuery.generateCoverQueries(profile, query);
             } else {
                 /* User has repeated a query in the same session */
                 coverQueries = repeatQuery.getCover_queries();
@@ -270,7 +280,7 @@ public class Evaluate {
         }
         avgp = avgp / query.getRelevant_documents().size();
         // updating user profile kept in client side
-        profile.addIntent(query.getQuery_intent().getName());
+        query.setQuery_intent(profile.addIntent(query.getQuery_intent()));
         boolean success = profile.addQuery(query);
         if (!success) {
             System.err.println("Failed to update user profile and now exiting...");
