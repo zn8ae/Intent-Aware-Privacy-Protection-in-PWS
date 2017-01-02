@@ -5,8 +5,12 @@
  */
 package edu.virginia.cs.object;
 
+import edu.virginia.cs.config.RunTimeConfig;
 import edu.virginia.cs.config.StaticData;
+import edu.virginia.cs.engine.Searcher;
 import edu.virginia.cs.utility.SortMap;
+import edu.virginia.cs.utility.TextTokenizer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +45,9 @@ public class Topic {
     private double maxProbFourgram;
     private double minProbFourgram;
 
-    public Topic(HashMap<String, Float> refModel) {
+    private final TextTokenizer tokenizer;
+
+    public Topic() {
         this.unigramLM = new HashMap<>();
         this.bigramLM = new HashMap<>();
         this.trigramLM = new HashMap<>();
@@ -50,7 +56,16 @@ public class Topic {
         this.probArrayBigram = new Double[BUCKET_SIZE];
         this.probArrayTrigram = new Double[BUCKET_SIZE];
         this.probArrayFourgram = new Double[BUCKET_SIZE];
+        this.tokenizer = new TextTokenizer(RunTimeConfig.removeStopWordsInCQ, RunTimeConfig.doStemmingInCQ);
+    }
 
+    public void reset() {
+        this.unigramLM = new HashMap<>();
+        this.bigramLM = new HashMap<>();
+        this.trigramLM = new HashMap<>();
+        this.fourgramLM = new HashMap<>();
+        totalUnigrams = 0;
+        totalUniqueUnigrams = 0;
     }
 
     public HashMap<String, Integer> getUnigramLM() {
@@ -163,6 +178,38 @@ public class Topic {
 
     public void setMinProbFourgram(double minProbFourgram) {
         this.minProbFourgram = minProbFourgram;
+    }
+
+    /**
+     *
+     * @return
+     */
+    public Double[] getProbArrayUnigram() {
+        return probArrayUnigram;
+    }
+
+    /**
+     *
+     * @return
+     */
+    public Double[] getProbArrayBigram() {
+        return probArrayBigram;
+    }
+
+    /**
+     *
+     * @return
+     */
+    public Double[] getProbArrayTrigram() {
+        return probArrayTrigram;
+    }
+
+    /**
+     *
+     * @return
+     */
+    public Double[] getProbArrayFourgram() {
+        return probArrayFourgram;
     }
 
     /**
@@ -431,6 +478,135 @@ public class Topic {
             }
         } else {
             System.err.println("Unknown Parameter...!");
+        }
+    }
+
+    private boolean checkForNull(Double[] param) {
+        boolean nonNullElemExist = false;
+        for (Double d : param) {
+            if (d != null) {
+                nonNullElemExist = true;
+                break;
+            }
+        }
+        return nonNullElemExist;
+    }
+
+    public boolean prepare(Searcher _searcher, String topic_name, int option) {
+        ArrayList<String> documents = _searcher.search(topic_name, "topic", "modified_content");
+        if (!documents.isEmpty()) {
+            for (String content : documents) {
+                analyzeDocument(content, option);
+            }
+            switch (option) {
+                case 1:
+                    if (!checkForNull(probArrayUnigram)) {
+                        setMaxMinProb("unigram");
+                    }
+                    break;
+                case 2:
+                    if (!checkForNull(probArrayUnigram)) {
+                        setMaxMinProb("unigram");
+                    }
+                    if (!checkForNull(probArrayBigram)) {
+                        setMaxMinProb("bigram");
+                    }
+                    break;
+                case 3:
+                    if (!checkForNull(probArrayUnigram)) {
+                        setMaxMinProb("unigram");
+                    }
+                    if (!checkForNull(probArrayBigram)) {
+                        setMaxMinProb("bigram");
+                    }
+                    if (!checkForNull(probArrayTrigram)) {
+                        setMaxMinProb("trigram");
+                    }
+                    break;
+                default:
+                    if (!checkForNull(probArrayUnigram)) {
+                        setMaxMinProb("unigram");
+                    }
+                    if (!checkForNull(probArrayBigram)) {
+                        setMaxMinProb("bigram");
+                    }
+                    if (!checkForNull(probArrayTrigram)) {
+                        setMaxMinProb("trigram");
+                    }
+                    if (!checkForNull(probArrayFourgram)) {
+                        setMaxMinProb("fourgram");
+                    }
+                    break;
+            }
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private void analyzeDocument(String document, int option) {
+        String previousTrigram = ""; // for four-grams
+        String previousBigram = ""; // for trigrams
+        String previousUnigram = ""; // for bigrams
+        List<String> tokens = tokenizer.TokenizeText(document);
+        for (String token : tokens) {
+            if (!token.isEmpty()) {
+                if (unigramLM.containsKey(token)) {
+                    unigramLM.put(token, unigramLM.get(token) + 1);
+                } else {
+                    unigramLM.put(token, 1);
+                    totalUniqueUnigrams++;
+                }
+                totalUnigrams++;
+                if (option == 1) {
+                    continue;
+                }
+                // generating bigrams
+                if (!previousUnigram.isEmpty()) {
+                    String bigram = previousUnigram + " " + token;
+                    if (bigramLM.containsKey(bigram)) {
+                        bigramLM.put(bigram, bigramLM.get(bigram) + 1);
+                    } else {
+                        bigramLM.put(bigram, 1);
+                    }
+                }
+                if (option == 2) {
+                    previousUnigram = token;
+                    continue;
+                }
+                // generating trigrams
+                if (!previousBigram.isEmpty()) {
+                    String trigram = previousBigram + " " + token;
+                    if (trigramLM.containsKey(trigram)) {
+                        trigramLM.put(trigram, trigramLM.get(trigram) + 1);
+                    } else {
+                        trigramLM.put(trigram, 1);
+                    }
+                }
+                if (option == 3) {
+                    if (!previousUnigram.isEmpty()) {
+                        previousBigram = previousUnigram + " " + token;
+                    }
+                    previousUnigram = token;
+                    continue;
+                }
+                // generating four-grams
+                if (!previousTrigram.isEmpty()) {
+                    String fourgram = previousTrigram + " " + token;
+                    if (fourgramLM.containsKey(fourgram)) {
+                        fourgramLM.put(fourgram, fourgramLM.get(fourgram) + 1);
+                    } else {
+                        fourgramLM.put(fourgram, 1);
+                    }
+                }
+                if (!previousBigram.isEmpty()) {
+                    previousTrigram = previousBigram + " " + token;
+                }
+                if (!previousUnigram.isEmpty()) {
+                    previousBigram = previousUnigram + " " + token;
+                }
+                previousUnigram = token;
+            }
         }
     }
 

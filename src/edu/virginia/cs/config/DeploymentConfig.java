@@ -16,4 +16,5 @@ public class DeploymentConfig {
     public static String UserSearchLogPath;
     public static String ReferenceModelPath;
     public static String AolDocFreqRecord;
+    public static String OdpHierarchyRecord;
 }

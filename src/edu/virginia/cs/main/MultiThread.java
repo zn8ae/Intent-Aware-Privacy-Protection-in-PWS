@@ -5,12 +5,15 @@
  */
 package edu.virginia.cs.main;
 
+import edu.virginia.cs.extra.Helper;
 import edu.virginia.cs.config.DeploymentConfig;
 import edu.virginia.cs.config.RunTimeConfig;
 import edu.virginia.cs.config.StaticData;
 import edu.virginia.cs.model.TopicTree;
+import edu.virginia.cs.model.TopicTreeNode;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -18,6 +21,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
+import org.xml.sax.SAXException;
 
 /**
  *
@@ -44,12 +51,15 @@ public class MultiThread {
             RunTimeConfig.ClientSideRanking = br.readLine().replace("client side re-ranking =", "").trim().equals("on");
             RunTimeConfig.NumberOfThreads = Integer.parseInt(br.readLine().replace("number of threads =", "").trim());
             RunTimeConfig.TotalDocInWeb = Integer.parseInt(br.readLine().replace("total documents in AOL index =", "").trim());
+            RunTimeConfig.removeStopWordsInCQ = br.readLine().replace("remove stopwords from cover query =", "").trim().equals("yes");
+            RunTimeConfig.doStemmingInCQ = br.readLine().replace("generate stemmed cover query =", "").trim().equals("yes");
 
             DeploymentConfig.AolIndexPath = br.readLine().replace("lucene AOL index directory =", "").trim();
             DeploymentConfig.OdpIndexPath = br.readLine().replace("lucene ODP index directory =", "").trim();
             DeploymentConfig.UserSearchLogPath = br.readLine().replace("users search log directory =", "").trim();
             DeploymentConfig.ReferenceModelPath = br.readLine().replace("reference model file =", "").trim();
             DeploymentConfig.AolDocFreqRecord = br.readLine().replace("AOL document frequency record =", "").trim();
+            DeploymentConfig.OdpHierarchyRecord = br.readLine().replace("ODP hierarchy file =", "").trim();
             br.close();
         } catch (IOException ex) {
             Logger.getLogger(MultiThread.class.getName()).log(Level.SEVERE, null, ex);
@@ -67,6 +77,71 @@ public class MultiThread {
     }
 
     /**
+     * Loads language models up to level 'param' from all language models of
+     * DMOZ categories.
+     *
+     * @param filename
+     * @param depth depth of the hierarchy
+     * @return list of language models
+     */
+    private TopicTree createTopicTree(int depth) {
+        TopicTree topicTree = null;
+        try {
+
+            SAXParserFactory factory = SAXParserFactory.newInstance();
+            SAXParser saxParser = factory.newSAXParser();
+
+            ArrayList<String> topics = null;
+            try {
+                FileInputStream fis = new FileInputStream(DeploymentConfig.OdpHierarchyRecord);
+                ODPCategoryReader odpCatReader = new ODPCategoryReader(depth);
+                saxParser.parse(fis, odpCatReader);
+                topics = odpCatReader.getTopics();
+            } catch (SAXException | IOException ex) {
+                Logger.getLogger(MultiThread.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
+            if (topics == null) {
+                return topicTree;
+            }
+
+            topicTree = new TopicTree();
+            int node_id = 0;
+
+            for (String currentTopic : topics) {
+                String[] split = currentTopic.split("/");
+                int level = split.length - 1;
+
+                TopicTreeNode node = new TopicTreeNode(currentTopic, node_id);
+                node.setNodeLevel(level);
+
+                if (split.length >= 2) {
+                    String parent = currentTopic.substring(0, currentTopic.lastIndexOf("/"));
+
+                    if (topicTree.exists(parent)) {
+                        node.setParent(topicTree.getTreeNode(parent));
+                        topicTree.getTreeNode(parent).addChildren(node);
+                    } else {
+                        System.err.println("Problem while loading ODP topic hierarchy...");
+                        System.exit(1);
+                    }
+                } else {
+                    node.setParent(null);
+                }
+
+                topicTree.addNode(currentTopic, node);
+                node_id++;
+            }
+
+        } catch (ParserConfigurationException | SAXException ex) {
+            Logger.getLogger(MultiThread.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+        return topicTree;
+
+    }
+
+    /**
      * The main method that creates and starts threads.
      *
      * @param count number of threads need to be created and started.
@@ -78,11 +153,13 @@ public class MultiThread {
             /* Loading the reference model, idf record and all user ids */
             ArrayList<String> allUserId = Helper.getAllUserId(DeploymentConfig.UserSearchLogPath, -1);
             StaticData.loadRefModel(DeploymentConfig.ReferenceModelPath);
-            StaticData.loadIDFRecord(DeploymentConfig.AOLDictionaryPath);
+            StaticData.loadIDFRecord(DeploymentConfig.AolDocFreqRecord);
 
-            LoadLanguageModel llm = new LoadLanguageModel(referenceModel);
-            llm.loadModels(settings.getLanguageModelPath(), 3);
-            ArrayList<LanguageModel> langModels = llm.getLanguageModels();
+            TopicTree tree = createTopicTree(4);
+            if (tree == null) {
+                System.err.println("Failed to load ODP category hierarchy");
+                System.exit(1);
+            }
 
             int limit = allUserId.size() / RunTimeConfig.NumberOfThreads;
             for (int i = 0; i < RunTimeConfig.NumberOfThreads; i++) {
@@ -93,7 +170,7 @@ public class MultiThread {
                 } else {
                     list = new ArrayList<>(allUserId.subList(start, start + limit));
                 }
-                myT[i] = new MyThread(list, "thread_" + i);
+                myT[i] = new MyThread(list, "thread_" + i, tree);
                 myT[i].start();
             }
             for (int i = 0; i < RunTimeConfig.NumberOfThreads; i++) {
@@ -139,11 +216,12 @@ class MyThread implements Runnable {
     private final ArrayList<String> userIds;
     private final String threadId;
     private String result;
-    private TopicTree tree;
+    private final TopicTree topicTree;
 
-    public MyThread(ArrayList<String> listUsers, String id) {
+    public MyThread(ArrayList<String> listUsers, String id, TopicTree tree) {
         this.userIds = listUsers;
         this.threadId = id;
+        this.topicTree = tree;
     }
 
     /**
@@ -152,7 +230,7 @@ class MyThread implements Runnable {
     @Override
     public void run() {
         try {
-            Evaluate evaluate = new Evaluate(tree);
+            Evaluate evaluate = new Evaluate(topicTree);
             result = evaluate.startEvaluation(userIds, threadId);
         } catch (Throwable ex) {
             Logger.getLogger(MyThread.class.getName()).log(Level.SEVERE, null, ex);

@@ -1,8 +1,10 @@
 package edu.virginia.cs.engine;
 
 import edu.virginia.cs.extra.Constants;
+import edu.virginia.cs.extra.Helper;
 import edu.virginia.cs.extra.Personalization;
 import edu.virginia.cs.object.ResultDoc;
+import edu.virginia.cs.object.Session;
 import edu.virginia.cs.object.UserQuery;
 import edu.virginia.cs.user.Intent;
 import edu.virginia.cs.utility.SpecialAnalyzer;
@@ -10,7 +12,6 @@ import edu.virginia.cs.user.Profile;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -85,6 +86,10 @@ public class Searcher {
      */
     public void clickDocument(UserQuery query, ResultDoc doc) throws IOException {
         Intent intent = (Intent) userProfile.getNodeMap().get(query.getQuery_intent().getName());
+        if (intent == null) {
+            intent = new Intent(query.getQuery_intent().getName());
+            userProfile.addIntent(intent.getName());
+        }
         intent.updateUsingClickedDoc(doc.getContent());
     }
 
@@ -106,6 +111,26 @@ public class Searcher {
         indexSearcher.setSimilarity(sim);
     }
 
+    private void updateSessionInformation(UserQuery userQuery) {
+        UserQuery lastSubmittedQuery = userProfile.getLastSubmittedQuery();
+        boolean isSame = false;
+        if (lastSubmittedQuery != null) {
+            isSame = Helper.checkSameSession(lastSubmittedQuery, userQuery);
+        }
+
+        // current query and previous query (if any) are from different session
+        if (!isSame) {
+            if (lastSubmittedQuery != null) {
+                // set end time of previous session
+                userProfile.getLastSession().setEnd_time(lastSubmittedQuery.getQuery_time());
+            }
+            // start of a new user session
+            Session session = new Session(userProfile.getSessions().size());
+            session.setStart_time(userQuery.getQuery_time());
+            userProfile.addSession(session);
+        }
+    }
+
     /**
      * The main search function. Searches the abstract field and returns a the
      * default number of results.
@@ -114,6 +139,7 @@ public class Searcher {
      * @return
      */
     public SearchResult search(UserQuery userQuery) {
+        updateSessionInformation(userQuery);
         SearchQuery searchQuery = new SearchQuery(userQuery.getQuery_text(), Constants.DEFAULT_FIELD);
         BooleanQuery combinedQuery = new BooleanQuery();
         for (String field : searchQuery.fields()) {
@@ -129,6 +155,28 @@ public class Searcher {
     }
 
     /**
+     * The main search function. Searches the abstract field and returns a the
+     * default number of results.
+     *
+     * @param query_text
+     * @return
+     */
+    public SearchResult search(String query_text) {
+        SearchQuery searchQuery = new SearchQuery(query_text, Constants.DEFAULT_FIELD);
+        BooleanQuery combinedQuery = new BooleanQuery();
+        for (String field : searchQuery.fields()) {
+            QueryParser parser = new QueryParser(Version.LUCENE_46, field, analyzer);
+            try {
+                Query textQuery = parser.parse(QueryParser.escape(searchQuery.queryText()));
+                combinedQuery.add(textQuery, BooleanClause.Occur.MUST);
+            } catch (ParseException exception) {
+                Logger.getLogger(Searcher.class.getName()).log(Level.SEVERE, null, exception);
+            }
+        }
+        return runSearch(combinedQuery, searchQuery);
+    }
+
+    /**
      * Searches for a document content in the index.
      *
      * @param queryText the document title, a URL
@@ -136,7 +184,7 @@ public class Searcher {
      * @param retField
      * @return clicked document content
      */
-    public String search(String queryText, String field, String retField) {
+    public ArrayList<String> search(String queryText, String field, String retField) {
         return runSearch(new SearchQuery(queryText, field), retField);
     }
 
@@ -188,20 +236,58 @@ public class Searcher {
     }
 
     /**
+     * Performs the actual Lucene search.
+     *
+     * @param luceneQuery
+     * @param numResults
+     * @return the SearchResult
+     */
+    private SearchResult runSearch(Query luceneQuery, SearchQuery searchQuery) {
+        try {
+            TopDocs docs = indexSearcher.search(luceneQuery, searchQuery.fromDoc() + searchQuery.numResults());
+            ScoreDoc[] hits = docs.scoreDocs;
+            String field = searchQuery.fields().get(0);
+
+            SearchResult searchResult = new SearchResult(searchQuery, docs.totalHits);
+            for (ScoreDoc hit : hits) {
+                Document doc = indexSearcher.doc(hit.doc);
+                ResultDoc rdoc = new ResultDoc(hit.doc);
+                String contents = doc.getField(field).stringValue();
+                rdoc.setContent(contents);
+                rdoc.setUrl(doc.getField("url").stringValue());
+                rdoc.setTopic(doc.getField("topic").stringValue());
+                searchResult.addResult(rdoc);
+            }
+
+            searchResult.trimResults(searchQuery.fromDoc());
+            return searchResult;
+
+        } catch (IOException ex) {
+            Logger.getLogger(Searcher.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return new SearchResult(searchQuery);
+    }
+
+    /**
      * Searches for document content in the lucene index.
      *
      * @param searchQuery a clicked URL
      * @param indexableField content of this field needs to be returned
      * @return clicked document content
      */
-    private String runSearch(SearchQuery searchQuery, String indexableField) {
+    private ArrayList<String> runSearch(SearchQuery searchQuery, String indexableField) {
         Query luceneQuery = new TermQuery(new Term(searchQuery.fields().get(0), searchQuery.queryText()));
-        String returnedResult = null;
+        ArrayList<String> returnedResult = new ArrayList<>();
         try {
-            TopDocs docs = indexSearcher.search(luceneQuery, 1);
+            TotalHitCountCollector collector = new TotalHitCountCollector();
+            indexSearcher.search(luceneQuery, collector);
+            TopDocs docs = indexSearcher.search(luceneQuery, Math.max(1, collector.getTotalHits()));
             ScoreDoc[] hits = docs.scoreDocs;
-            Document doc = indexSearcher.doc(hits[0].doc);
-            returnedResult = doc.getField(indexableField).stringValue();
+            for (ScoreDoc hit : hits) {
+                Document doc = indexSearcher.doc(hit.doc);
+                String contents = doc.getField(indexableField).stringValue();
+                returnedResult.add(contents);
+            }
         } catch (IOException exception) {
             Logger.getLogger(Searcher.class.getName()).log(Level.SEVERE, null, exception);
         }

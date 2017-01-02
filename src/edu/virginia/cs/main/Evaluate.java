@@ -1,14 +1,17 @@
 package edu.virginia.cs.main;
 
+import edu.virginia.cs.extra.Helper;
 import edu.virginia.cs.config.DeploymentConfig;
 import edu.virginia.cs.config.RunTimeConfig;
 import edu.virginia.cs.engine.OkapiBM25;
 import edu.virginia.cs.engine.Searcher;
+import edu.virginia.cs.model.ClassifyIntent;
 import edu.virginia.cs.model.GenerateCoverQuery;
 import edu.virginia.cs.model.TopicTree;
 import edu.virginia.cs.object.ResultDoc;
 import edu.virginia.cs.object.Session;
 import edu.virginia.cs.object.UserQuery;
+import edu.virginia.cs.user.Intent;
 import edu.virginia.cs.user.Profile;
 import edu.virginia.cs.utility.Converter;
 import java.io.IOException;
@@ -21,7 +24,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import java.io.FileWriter;
-import java.util.Date;
 
 public class Evaluate {
 
@@ -32,6 +34,8 @@ public class Evaluate {
     private ArrayList<String> listOfUserQuery;
     /* Storing a specific user's all queries */
     private ArrayList<String> listOfCoverQuery;
+    /* Object for intent classification of the user query */
+    private final ClassifyIntent classifyIntent;
     /* Object to generate cover queries for a specific user query */
     private final GenerateCoverQuery gCoverQuery;
     /* User profile which is constructed and maintained in the client side */
@@ -52,6 +56,8 @@ public class Evaluate {
         _searcher.setSimilarity(new OkapiBM25());
         // setting the flag to enable personalization
         _searcher.activatePersonalization(true);
+        gCoverQuery = new GenerateCoverQuery(tree);
+        classifyIntent = new ClassifyIntent();
         computeNMI = new NMICalculation(DeploymentConfig.AolIndexPath);
     }
 
@@ -88,10 +94,6 @@ public class Evaluate {
              * query contains query plus the timestamp when the query was
              * submitted.
              */
-            Date lastQuerySubmitTime = null;
-            UserQuery lastSubmittedQuery = null;
-            int session_id = 0;
-
             for (UserQuery query : userQueries) {
                 /**
                  * If a user query has at least one corresponding clicked
@@ -99,26 +101,29 @@ public class Evaluate {
                  *
                  */
                 if (!query.getRelevant_documents().isEmpty()) {
-                    if (lastQuerySubmitTime != null && lastSubmittedQuery != null) {
-                        boolean isSame = Helper.checkSameSession(lastQuerySubmitTime, query.getQuery_time(), lastSubmittedQuery.getQuery_text(), query.getQuery_text());
-                        // current query and previous query are from different session
-                        if (!isSame) {
-                            // set end time of previous session
-                            lastSubmittedQuery.getQuery_session().setEndTime(lastQuerySubmitTime);
-                            // start of a new user session
-                            Session session = new Session(session_id);
-                            session.setStartTime(query.getQuery_time());
-                            session_id++;
-                            query.setQuery_session(session);
-                        }
+                    UserQuery lastSubmittedQuery = profile.getLastSubmittedQuery();
+                    boolean isSame = false;
+                    if (lastSubmittedQuery != null) {
+                        isSame = Helper.checkSameSession(lastSubmittedQuery, query);
                     }
+
+                    // current query and previous query (if any) are from different session
+                    if (!isSame) {
+                        if (lastSubmittedQuery != null) {
+                            // set end time of previous session
+                            profile.getLastSession().setEnd_time(lastSubmittedQuery.getQuery_time());
+                        }
+                        // start of a new user session
+                        Session session = new Session(profile.getSessions().size());
+                        session.setStart_time(query.getQuery_time());
+                        profile.addSession(session);
+                    }
+
                     listOfUserQuery.add(query.getQuery_text());
                     // computing average precision for a query
                     double avgPrec = AvgPrec(query);
                     meanAvgPrec += avgPrec;
                     ++numQueries;
-                    lastQuerySubmitTime = query.getQuery_time();
-                    lastSubmittedQuery = query;
                 }
             }
 
@@ -174,6 +179,13 @@ public class Evaluate {
     private double AvgPrec(UserQuery query) throws Throwable {
         // generating the cover queries
         double avgp = 0.0;
+        Intent queryIntent = classifyIntent.inferQueryIntent(query);
+        if (queryIntent == null) {
+            /* couldn't classify user query intent, so can't submit it */
+            return avgp;
+        }
+        query.setQuery_intent(queryIntent);
+
         if (RunTimeConfig.NumberOfCoverQuery == 0) {
             // if no cover query is required, just submit the original query
             avgp = submitOriginalQuery(query);
@@ -183,18 +195,18 @@ public class Evaluate {
              * If the user is repeating a query in the same session, same set of
              * cover queries will be submitted to the search engine.
              */
-            int query_index = profile.checkRepeatInCurrentSession(query);
-            if (query_index == -1) {
-                coverQueries = gCoverQuery.generateNQueries(profile, query);
+            UserQuery repeatQuery = profile.getLastSession().checkRepeat(query);
+            if (repeatQuery == null) {
+                coverQueries = gCoverQuery.generateCoverQueries(profile, query, RunTimeConfig.NumberOfCoverQuery);
             } else {
                 /* User has repeated a query in the same session */
-                coverQueries = profile.getQuery(query_index).getCover_queries();
+                coverQueries = repeatQuery.getCover_queries();
             }
             /**
              * if for some reason cover queries are not generated properly, no
              * query will be submitted to the search engine.
              */
-            if (coverQueries == null) {
+            if (coverQueries == null || coverQueries.isEmpty()) {
                 return avgp;
             }
 
@@ -207,7 +219,9 @@ public class Evaluate {
                 if (!searchResults.isEmpty()) {
                     int rand = (int) (Math.random() * searchResults.size());
                     ResultDoc rdoc = searchResults.get(rand);
-                    // user clicked a document
+                    rdoc.setClicked();
+                    coverQueries.get(k).addRelevant_document(rdoc);
+                    // user clicks a document
                     _searcher.clickDocument(coverQueries.get(k), rdoc);
                 }
                 // submitting the original user query to the search engine
@@ -256,7 +270,13 @@ public class Evaluate {
         }
         avgp = avgp / query.getRelevant_documents().size();
         // updating user profile kept in client side
-        profile.addQuery(query);
+        profile.addIntent(query.getQuery_intent().getName());
+        boolean success = profile.addQuery(query);
+        if (!success) {
+            System.err.println("Failed to update user profile and now exiting...");
+            System.exit(1);
+        }
+        profile.getLastSession().addUser_queries(query);
         return avgp;
     }
 

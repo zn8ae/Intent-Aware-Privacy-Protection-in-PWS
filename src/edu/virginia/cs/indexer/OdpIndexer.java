@@ -1,4 +1,4 @@
-package edu.virginia.cs.index;
+package edu.virginia.cs.indexer;
 
 import edu.virginia.cs.utility.SpecialAnalyzer;
 import edu.virginia.cs.utility.TextTokenizer;

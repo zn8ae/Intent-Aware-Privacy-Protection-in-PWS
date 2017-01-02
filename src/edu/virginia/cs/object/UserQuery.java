@@ -17,8 +17,8 @@ public class UserQuery {
 
     private int query_id;
     private String query_text;
-    private Session query_session;
     private Date query_time;
+    private int query_length;
     private ArrayList<ResultDoc> relevant_documents;
     private ArrayList<UserQuery> cover_queries;
     private Intent query_intent;
@@ -46,20 +46,20 @@ public class UserQuery {
         this.query_text = query_text;
     }
 
-    public Session getQuery_session() {
-        return query_session;
-    }
-
-    public void setQuery_session(Session query_session) {
-        this.query_session = query_session;
-    }
-
     public Date getQuery_time() {
         return query_time;
     }
 
     public void setQuery_time(Date query_time) {
         this.query_time = query_time;
+    }
+
+    public int getQuery_length() {
+        return query_length;
+    }
+
+    public void setQuery_length(int query_length) {
+        this.query_length = query_length;
     }
 
     public ArrayList<ResultDoc> getRelevant_documents() {

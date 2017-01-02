@@ -14,8 +14,10 @@ public class ResultDoc {
     private final int _id;
     private String _title = "[no title]";
     private String _content = "[no content]";
+    private String _modifiedContent = "[no modified content]";
     private String _docUrl = "[no url]";
     private boolean _isClicked = false;
+    private String _topic = "[no topic]";
 
     public ResultDoc() {
         _id = -1;
@@ -51,6 +53,14 @@ public class ResultDoc {
         return this;
     }
 
+    public String getModifiedContent() {
+        return _modifiedContent;
+    }
+
+    public void setModifiedContent(String _modifiedContent) {
+        this._modifiedContent = _modifiedContent;
+    }
+
     public ResultDoc setUrl(String nContent) {
         _docUrl = nContent;
         return this;
@@ -64,4 +74,13 @@ public class ResultDoc {
     public boolean isClicked() {
         return _isClicked;
     }
+
+    public String getTopic() {
+        return _topic;
+    }
+
+    public void setTopic(String _topic) {
+        this._topic = _topic;
+    }
+
 }

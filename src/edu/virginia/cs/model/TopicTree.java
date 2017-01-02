@@ -7,7 +7,9 @@ package edu.virginia.cs.model;
 
 import edu.virginia.cs.interfaces.Tree;
 import edu.virginia.cs.interfaces.TreeNode;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  *
@@ -16,6 +18,11 @@ import java.util.HashMap;
 public class TopicTree implements Tree {
 
     private HashMap<String, TreeNode> nodeMap;
+    private HashMap<Integer, List<TreeNode>> levelWiseNodeMap;
+
+    public TopicTree() {
+        this.nodeMap = new HashMap<>();
+    }
 
     @Override
     public void setNodes(HashMap<String, TreeNode> nodeMap) {
@@ -31,9 +38,24 @@ public class TopicTree implements Tree {
         return this.nodeMap;
     }
 
+    public boolean exists(String node) {
+        return nodeMap.containsKey(node);
+    }
+
     @Override
     public void addNode(String nodePath, TreeNode node) {
         this.nodeMap.put(nodePath, node);
+        if(levelWiseNodeMap.containsKey(node.getNodeLevel())){
+            levelWiseNodeMap.get(node.getNodeLevel()).add(node);
+        }else{
+            List<TreeNode> nodeList = new ArrayList<>();
+            nodeList.add(node);
+            levelWiseNodeMap.put(node.getNodeLevel(), nodeList);
+        }
+    }
+
+    public List<TreeNode> getNodesOfLevel(int level) {
+        return levelWiseNodeMap.get(level);
     }
 
 }

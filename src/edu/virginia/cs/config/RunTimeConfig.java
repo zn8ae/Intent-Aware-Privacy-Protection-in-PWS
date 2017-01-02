@@ -15,4 +15,6 @@ public class RunTimeConfig {
     public static int NumberOfThreads;
     public static boolean ClientSideRanking;
     public static int TotalDocInWeb;
+    public static boolean removeStopWordsInCQ;
+    public static boolean doStemmingInCQ;
 }

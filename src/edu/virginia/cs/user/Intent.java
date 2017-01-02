@@ -58,6 +58,10 @@ public class Intent implements TreeNode {
         this.parent = node;
     }
 
+    public boolean isParent(TreeNode node) {
+        return this.intentName.equals(((Intent) node.getParent()).getName());
+    }
+
     @Override
     public List<TreeNode> getChildrens() {
         return this.childrens;
@@ -69,7 +73,7 @@ public class Intent implements TreeNode {
     }
 
     @Override
-    public void addChildrens(TreeNode children) {
+    public void addChildren(TreeNode children) {
         if (this.childrens != null) {
             this.childrens.add(children);
         } else {

@@ -29,6 +29,8 @@ public class TopicTreeNode implements TreeNode {
     public TopicTreeNode(String name, int id) {
         this.topic_name = name;
         this.topic_id = id;
+        this.topic = new Topic();
+        this.listOfChildren = new ArrayList<>();
         topicPrior = -1;
     }
 
@@ -47,13 +49,23 @@ public class TopicTreeNode implements TreeNode {
         return listOfChildren;
     }
 
+    public List<TreeNode> getSiblings() {
+        ArrayList<TreeNode> siblings = new ArrayList<>();
+        for (TreeNode node : parent.getChildrens()) {
+            if (((TopicTreeNode) node).getTopic_id() != this.topic_id) {
+                siblings.add(node);
+            }
+        }
+        return siblings;
+    }
+
     @Override
     public void setChildrens(List<TreeNode> childrens) {
         this.listOfChildren = new ArrayList<>(childrens);
     }
 
     @Override
-    public void addChildrens(TreeNode children) {
+    public void addChildren(TreeNode children) {
         this.listOfChildren.add(children);
     }
 

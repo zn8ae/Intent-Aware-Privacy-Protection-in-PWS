@@ -9,6 +9,8 @@ import edu.virginia.cs.config.StaticData;
 import edu.virginia.cs.interfaces.Tree;
 import edu.virginia.cs.interfaces.TreeNode;
 import edu.virginia.cs.object.ResultDoc;
+import edu.virginia.cs.object.Session;
+import edu.virginia.cs.object.Task;
 import edu.virginia.cs.object.UserQuery;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -27,10 +29,15 @@ public class Profile implements Tree {
     private int totalTokenCount;
     private final TreeNode root;
 
+    private final ArrayList<Session> sessions;
+    private final ArrayList<Task> in_session_tasks;
+
     public Profile(String id) {
         this.submittedQueries = new ArrayList<>();
         this.userId = id;
         this.intents = new HashMap<>();
+        this.sessions = new ArrayList<>();
+        this.in_session_tasks = new ArrayList<>();
         this.root = new Intent("Top");
         this.root.setNodeLevel(0);
         this.root.setParent(null);
@@ -44,6 +51,13 @@ public class Profile implements Tree {
         return submittedQueries;
     }
 
+    public UserQuery getLastSubmittedQuery() {
+        if (submittedQueries.isEmpty()) {
+            return null;
+        }
+        return submittedQueries.get(submittedQueries.size() - 1);
+    }
+
     public UserQuery getQuery(int index) {
         if (index < submittedQueries.size()) {
             return submittedQueries.get(index);
@@ -52,43 +66,35 @@ public class Profile implements Tree {
         }
     }
 
-    public void addQuery(UserQuery query) {
+    public boolean addQuery(UserQuery query) {
         this.submittedQueries.add(query);
-        query.getQuery_intent().updateUsingSubmittedQuery(query.getQuery_text());
-        for (ResultDoc doc : query.getRelevant_documents()) {
-            if (doc.isClicked()) {
-                query.getQuery_intent().updateUsingClickedDoc(doc.getContent());
-            }
-        }
-    }
-
-    public int checkRepeatInCurrentSession(UserQuery query) {
-        int query_index = -1;
-        for (int i = submittedQueries.size() - 1; i >= 0; i--) {
-            if (submittedQueries.get(i).getQuery_session().getSession_id() == query.getQuery_session().getSession_id()) {
-                if (submittedQueries.get(i).getQuery_text().equals(query.getQuery_text())) {
-                    query_index = i;
-                    break;
+        Intent query_intent = (Intent) intents.get(query.getQuery_intent().getName());
+        if (query_intent == null) {
+            System.err.println("Failed to update user profile!");
+            return false;
+        } else {
+            query_intent.updateUsingSubmittedQuery(query.getQuery_text());
+            for (ResultDoc doc : query.getRelevant_documents()) {
+                if (doc.isClicked()) {
+                    query_intent.updateUsingClickedDoc(doc.getContent());
                 }
-            } else {
-                break;
             }
+            return true;
         }
-        return query_index;
     }
 
-    public void addBranch(String path) {
-        if (!branchExists(path)) {
-            String[] nodes = path.split("/");
+    public void addIntent(String intent_name) {
+        if (!intentExists(intent_name)) {
+            String[] nodes = intent_name.split("/");
             String temp = nodes[0];
             TreeNode parent = root;
             for (int i = 1; i < nodes.length; i++) {
                 temp += "/" + nodes[i];
-                if (!branchExists(temp)) {
+                if (!intentExists(temp)) {
                     TreeNode node = new Intent(temp);
                     node.setParent(parent);
                     node.setNodeLevel(parent.getNodeLevel() + 1);
-                    parent.addChildrens(node);
+                    parent.addChildren(node);
                     parent = node;
                     intents.put(temp, node);
                 }
@@ -96,8 +102,8 @@ public class Profile implements Tree {
         }
     }
 
-    public boolean branchExists(String path) {
-        return intents.containsKey(path);
+    public boolean intentExists(String intent_name) {
+        return intents.containsKey(intent_name);
     }
 
     @Override
@@ -121,6 +127,41 @@ public class Profile implements Tree {
 
     public int getTotalTokenCount() {
         return totalTokenCount;
+    }
+
+    public HashMap<String, TreeNode> getIntents() {
+        return intents;
+    }
+
+    public TreeNode getRoot() {
+        return root;
+    }
+
+    public ArrayList<Session> getSessions() {
+        return sessions;
+    }
+
+    public Session getLastSession() {
+        if (sessions.isEmpty()) {
+            return null;
+        }
+        return this.sessions.get(sessions.size() - 1);
+    }
+
+    public void addSession(Session sess) {
+        this.sessions.add(sess);
+    }
+
+    public ArrayList<Task> getIn_session_tasks() {
+        return in_session_tasks;
+    }
+
+    public Task getLastInSessionTask() {
+        return this.in_session_tasks.get(in_session_tasks.size() - 1);
+    }
+
+    public void addInSessionTask(Task task) {
+        this.in_session_tasks.add(task);
     }
 
     public HashMap<String, Integer> getCompleteHistory() {

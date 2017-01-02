@@ -21,7 +21,7 @@ public interface TreeNode {
 
     public void setChildrens(List<TreeNode> childrens);
 
-    public void addChildrens(TreeNode children);
+    public void addChildren(TreeNode children);
 
     public void setNodeLevel(int level);
 

@@ -3,19 +3,21 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package edu.virginia.cs.main;
+package edu.virginia.cs.extra;
 
 import edu.virginia.cs.config.StaticData;
 import edu.virginia.cs.object.ResultDoc;
+import edu.virginia.cs.object.Session;
+import edu.virginia.cs.object.UserQuery;
 import edu.virginia.cs.utility.SortMap;
 import edu.virginia.cs.utility.TextTokenizer;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -28,46 +30,94 @@ public class Helper {
     private static final TextTokenizer TOKENIZER = new TextTokenizer(true, true);
 
     /**
+     * Generate a random number within a range.
      *
-     * @param previousDate
-     * @param currentDate
-     * @param lastSubmittedQuery
+     * @param min
+     * @param max
+     * @return
+     */
+    public static int getRandom(int min, int max) {
+        Random random = new Random();
+        return random.nextInt(max - min) + min;
+    }
+
+    /**
+     * Generate random number using poisson distribution.
+     *
+     * @param lambda average query length
+     * @return
+     */
+    public static int getPoisson(double lambda) {
+        int n = 1;
+        double prob = 1.0;
+        Random r = new Random();
+
+        while (true) {
+            prob *= r.nextDouble();
+            if (prob < Math.exp(-lambda)) {
+                break;
+            }
+            n += 1;
+        }
+        return n - 1;
+    }
+
+    /**
+     *
+     *
+     * @param previousQuery
      * @param currentQuery
      * @return
      */
-    public static boolean checkSameSession(Date previousDate, Date currentDate, String lastSubmittedQuery, String currentQuery) {
+    public static boolean checkSameSession(UserQuery previousQuery, UserQuery currentQuery) {
         /**
          * Measuring the time difference between current query and last
          * submitted query in minutes.
          */
-        long diffMinutes = -1;
+        long diffMinutes = 0;
         try {
             //in milliseconds
-            long diff = currentDate.getTime() - previousDate.getTime();
+            long diff = currentQuery.getQuery_time().getTime() - previousQuery.getQuery_time().getTime();
             diffMinutes = diff / (60 * 1000);
         } catch (Exception ex) {
             Logger.getLogger(Helper.class.getName()).log(Level.SEVERE, null, ex);
         }
         /**
+         * If time difference is less than 60 minutes between current query and
+         * previous query, they belong to the same session .
+         */
+        return diffMinutes < 60;
+    }
+
+    public static boolean checkSameTask(UserQuery previousQuery, UserQuery currentQuery) {
+        /**
          * Measuring the similarity between current query and last submitted
          * query in terms of similar tokens they have.
          */
 
-        HashSet<String> currentQuTokens = new HashSet<>(TOKENIZER.TokenizeText(currentQuery));
-        HashSet<String> prevQuTokens = new HashSet<>(TOKENIZER.TokenizeText(lastSubmittedQuery));
+        HashSet<String> currentQuTokens = new HashSet<>(TOKENIZER.TokenizeText(currentQuery.getQuery_text()));
+        HashSet<String> prevQuTokens = new HashSet<>(TOKENIZER.TokenizeText(previousQuery.getQuery_text()));
         boolean isSimilar = false;
-        double count = Math.ceil(currentQuTokens.size() / 2.0);
+        int count = (currentQuTokens.size() > prevQuTokens.size() ? prevQuTokens.size() : currentQuTokens.size()) / 2;
         HashSet<String> intersection = new HashSet<>(currentQuTokens);
         intersection.retainAll(prevQuTokens);
         if (intersection.size() >= count) {
             isSimilar = true;
         }
         /**
-         * If time difference is less than 60 minutes between current query and
-         * previous query or if both queries have 50% similarity in terms of
-         * having similar tokens, they belong to the same session .
+         * If both queries have 50% similarity in terms of having similar
+         * tokens, they belong to the same task .
          */
-        return diffMinutes < 60 || isSimilar;
+        return isSimilar;
+    }
+
+    public static UserQuery isInSessionTask(Session session, UserQuery currentQuery) {
+        for (UserQuery query : session.getUser_queries()) {
+            if (checkSameTask(query, currentQuery)) {
+                return query;
+            }
+        }
+        return null;
     }
 
     private static HashMap<String, Integer> computeTermFreq(List<String> tokens) {
