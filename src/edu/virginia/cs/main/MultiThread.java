@@ -154,7 +154,6 @@ public class MultiThread {
                 System.err.println("Failed to load ODP category hierarchy");
                 System.exit(1);
             }
-            System.out.println("Topic tree loaded... " + tree.getNodesOfLevel(3).size());
 
             int limit = allUserId.size() / RunTimeConfig.NumberOfThreads;
             for (int i = 0; i < RunTimeConfig.NumberOfThreads; i++) {
@@ -191,7 +190,7 @@ public class MultiThread {
             double finalKL = totalKLDivergence / totalUsers;
             double finalMI = totalMI / totalUsers;
             double finalMAP = totalMAP / totalQueries;
-            double finalGoA = totalGoA / totalQueries;
+            double finalGoA = totalGoA / totalUsers;
             FileWriter fw = new FileWriter("model-output-files/final_output.txt");
             fw.write("**************Parameter Settings**************\n");
             fw.write("Number of cover queries = " + RunTimeConfig.NumberOfCoverQuery + "\n");

@@ -150,9 +150,9 @@ public class Evaluate {
             totalNMI += mutualInfo;
             double GoAScore = computeGoA.evaluateComponents(profile);
             totalGoA += GoAScore;
-            writer.write(countUsers + "\t" + Integer.parseInt(userId) + "\t" + MAP + "\t" + klDivergence + "\t" + mutualInfo + "\n");
+            writer.write(countUsers + "\t" + Integer.parseInt(userId) + "\t" + MAP + "\t" + klDivergence + "\t" + mutualInfo + "\t" + GoAScore + "\n");
             writer.flush();
-            System.out.printf("%-8d\t%-8d\t%-8f\t%.8f\t%.8f\t%.8f\n", countUsers, Integer.parseInt(userId), MAP, klDivergence, mutualInfo, GoAScore);
+            System.out.printf("%-8d\t%-8d\t%.8f\t%.8f\t%.8f\t%.8f\n", countUsers, Integer.parseInt(userId), MAP, klDivergence, mutualInfo, GoAScore);
         }
 
         double avgKL = 0;

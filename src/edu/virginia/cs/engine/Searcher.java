@@ -275,11 +275,11 @@ public class Searcher {
     }
 
     /**
-     * Searches for document content in the lucene index.
+     * Searches and returns relevant document's content.
      *
      * @param searchQuery a clicked URL
      * @param indexableField content of this field needs to be returned
-     * @return clicked document content
+     * @return document's content
      */
     private ArrayList<String> runSearch(SearchQuery searchQuery, String indexableField) {
         Query luceneQuery = new TermQuery(new Term(searchQuery.fields().get(0), searchQuery.queryText()));
@@ -302,7 +302,7 @@ public class Searcher {
     }
 
     /**
-     * Searches for document content in the lucene index.
+     * Searches and returns total hit count for given query terms.
      *
      * @param tokens
      * @param field

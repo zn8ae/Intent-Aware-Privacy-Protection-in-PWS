@@ -29,8 +29,9 @@ import java.util.logging.Logger;
 public class GoACalculation {
 
     private final int interval_in_hours;
-    private final HashMap<String, Integer> queryIntentMapping;
+    private final HashMap<String, Double> queryIntentMapping;
     private double totalQueries;
+    private final double smoothing_factor = 0.001;
 
     public GoACalculation(int param) {
         this.interval_in_hours = param;
@@ -49,8 +50,9 @@ public class GoACalculation {
                 String[] split = line.split("\t");
                 int count = Integer.valueOf(split[1]);
                 totalQueries += count;
-                queryIntentMapping.put(split[0], count);
+                queryIntentMapping.put(split[0], count * smoothing_factor);
             }
+            totalQueries = smoothing_factor * totalQueries;
             br.close();
         } catch (FileNotFoundException ex) {
             Logger.getLogger(GoACalculation.class.getName()).log(Level.SEVERE, null, ex);
@@ -122,8 +124,9 @@ public class GoACalculation {
         }
         int minScore = 0;
         for (int i = 0; i < trueComponents.size(); i++) {
-            minScore += 0 - i;
+            minScore += i;
         }
+
         int coverComponentFound = 0;
         int trueComponentFound = 0;
         for (Map.Entry<String, Double> entry : sortedScoreMap.entrySet()) {
@@ -158,12 +161,16 @@ public class GoACalculation {
         }
         for (Map.Entry<String, Integer> member : component.entrySet()) {
             if (queryIntentMapping.containsKey(member.getKey())) {
-                int freq = queryIntentMapping.get(member.getKey());
+                double freq = queryIntentMapping.get(member.getKey());
                 double probability1 = freq / totalQueries;
+                double entropy1 = -1.0 * Math.log(probability1);
                 double probability2 = (freq + member.getValue()) / (totalQueries + totalQueryCount);
-                score += (probability2 - probability1);
+                double entropy2 = -1.0 * Math.log(probability2);
+                score += (entropy2 - entropy1);
             }
         }
+        /* normalize the score by component size */
+        score = score / component.size();
         return score;
     }
 
@@ -171,6 +178,7 @@ public class GoACalculation {
         for (Map.Entry<String, Integer> member : component.entrySet()) {
             if (queryIntentMapping.containsKey(member.getKey())) {
                 queryIntentMapping.put(member.getKey(), queryIntentMapping.get(member.getKey()) + member.getValue());
+                totalQueries += member.getValue();
             }
         }
     }

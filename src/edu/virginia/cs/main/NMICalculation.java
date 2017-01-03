@@ -74,19 +74,9 @@ public class NMICalculation {
      */
     public double calculateNMI(ArrayList<String> origQuery, ArrayList<String> coverQuery) {
         double NMI = 0;
-        HashMap<String, Double> Px = new HashMap<>();
         HashMap<String, Double> Py = new HashMap<>();
-        HashMap<String, Double> Pxy = new HashMap<>();
         double Hx = 0, Hy = 0;
-        /* computing P(x) */
-        for (String qr : origQuery) {
-            double prob = getProbability(qr);
-            if (prob > 0) {
-                Hx += prob * (Math.log10(prob) / Math.log10(2));
-            }
-            Px.put(qr, prob);
-        }
-        Hx = (-1) * Hx;
+
         /* computing P(y) */
         for (String qr : coverQuery) {
             double prob = getProbability(qr);
@@ -96,21 +86,19 @@ public class NMICalculation {
             Py.put(qr, prob);
         }
         Hy = (-1) * Hy;
-        /* computing P(x, y) */
-        for (String origQuery1 : origQuery) {
-            for (String coverQuery1 : coverQuery) {
-                String combineQuery = origQuery1 + " " + coverQuery1;
-                double prob = getProbability(combineQuery);
-                Pxy.put(combineQuery, prob);
-            }
-        }
+
         /* computing mutual information */
         double muInfo = 0;
         for (String origQuery1 : origQuery) {
+            /* computing P(x) */
+            double px = getProbability(origQuery1);
+            if (px > 0) {
+                Hx += px * (Math.log10(px) / Math.log10(2));
+            }
             for (String coverQuery1 : coverQuery) {
-                String combineQuery = origQuery1 + " " + coverQuery1;
-                double pxy = Pxy.get(combineQuery);
-                double px = Px.get(origQuery1);
+                String combinedQuery = origQuery1 + " " + coverQuery1;
+                /* computing P(x, y) */
+                double pxy = getProbability(combinedQuery);
                 double py = Py.get(coverQuery1);
                 if (pxy > 0 && px > 0 && py > 0) {
                     double partER = pxy * ((Math.log10(pxy / (px * py))) / Math.log10(2));
@@ -118,6 +106,8 @@ public class NMICalculation {
                 }
             }
         }
+        Hx = (-1) * Hx;
+
         /* normalized variant of mutual information */
         if (muInfo > 0 && Hx > 0 && Hy > 0) {
             NMI = muInfo / (Hx * Hy);
