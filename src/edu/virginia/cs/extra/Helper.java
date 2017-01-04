@@ -147,7 +147,7 @@ public class Helper {
         for (Map.Entry<String, Float> entry : resultedMap.entrySet()) {
             float score;
             // Giving 50% weight to both search engine and client side rank.
-            score = 1.0f * (1.0f / (i + 1)) + 0.0f * (1.0f / (Integer.parseInt(entry.getKey() + 1)));
+            score = 0.25f * (1.0f / (i + 1)) + 0.75f * (1.0f / (Integer.parseInt(entry.getKey() + 1)));
             docScoreMap.put(entry.getKey(), score);
             i++;
         }

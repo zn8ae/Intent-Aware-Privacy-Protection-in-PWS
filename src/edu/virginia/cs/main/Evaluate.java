@@ -8,6 +8,7 @@ import edu.virginia.cs.engine.Searcher;
 import edu.virginia.cs.model.ClassifyIntent;
 import edu.virginia.cs.model.GenerateCoverQuery;
 import edu.virginia.cs.model.TopicTree;
+import edu.virginia.cs.model.TopicTreeNode;
 import edu.virginia.cs.object.ResultDoc;
 import edu.virginia.cs.object.Session;
 import edu.virginia.cs.object.UserQuery;
@@ -18,12 +19,17 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import java.io.FileWriter;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
+import org.xml.sax.SAXException;
 
 public class Evaluate {
 
@@ -49,20 +55,89 @@ public class Evaluate {
     /* Total mutual information for 'n' users that we are evaluating, ex. in our case, n = 1000 */
     private double totalNMI = 0;
     /* Total goodness of alignment score for 'n' users that we are evaluating, ex. in our case, n = 1000 */
-    private double totalGoA = 0;
+    private double totalMet1 = 0;
+    private double totalMet2 = 0;
 
     private final NMICalculation computeNMI;
-    private final GoACalculation computeGoA;
+    private final Metric1 metric1;
+    private final Metric2 metric2;
 
-    public Evaluate(TopicTree tree) {
+    public Evaluate() {
         this._searcher = new Searcher(DeploymentConfig.AolIndexPath);
         this._searcher.setSimilarity(new OkapiBM25());
         // setting the flag to enable personalization
         this._searcher.activatePersonalization(true);
+        TopicTree tree = createTopicTree(4);
+        if (tree == null) {
+            System.err.println("Failed to load ODP category hierarchy");
+            System.exit(1);
+        }
         this.gCoverQuery = new GenerateCoverQuery(tree);
         this.classifyIntent = new ClassifyIntent();
         this.computeNMI = new NMICalculation(DeploymentConfig.AolIndexPath);
-        this.computeGoA = new GoACalculation(168);
+        this.metric1 = new Metric1(168);
+        this.metric2 = new Metric2(168);
+    }
+
+    /**
+     * Loads language models up to level 'param' from all language models of
+     * DMOZ categories.
+     *
+     * @param filename
+     * @param depth depth of the hierarchy
+     * @return list of language models
+     */
+    private TopicTree createTopicTree(int depth) {
+        TopicTree topicTree = null;
+        try {
+            SAXParserFactory factory = SAXParserFactory.newInstance();
+            SAXParser saxParser = factory.newSAXParser();
+
+            ArrayList<String> topics = null;
+            try {
+                FileInputStream fis = new FileInputStream(DeploymentConfig.OdpHierarchyRecord);
+                ODPCategoryReader odpCatReader = new ODPCategoryReader(depth);
+                saxParser.parse(fis, odpCatReader);
+                topics = odpCatReader.getTopics();
+            } catch (SAXException | IOException ex) {
+                Logger.getLogger(MultiThread.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
+            if (topics == null) {
+                return topicTree;
+            }
+
+            topicTree = new TopicTree();
+            int node_id = 0;
+
+            for (String currentTopic : topics) {
+                String[] split = currentTopic.split("/");
+                int level = split.length - 1;
+
+                TopicTreeNode node = new TopicTreeNode(currentTopic, node_id);
+                node.setNodeLevel(level);
+
+                if (split.length >= 2) {
+                    String parent = currentTopic.substring(0, currentTopic.lastIndexOf("/"));
+                    if (topicTree.exists(parent)) {
+                        node.setParent(topicTree.getTreeNode(parent));
+                        topicTree.getTreeNode(parent).addChildren(node);
+                    } else {
+                        System.err.println("Problem while loading ODP topic hierarchy...");
+                        System.exit(1);
+                    }
+                } else {
+                    node.setParent(null);
+                }
+
+                topicTree.addNode(currentTopic, node);
+                node_id++;
+            }
+
+        } catch (ParserConfigurationException | SAXException ex) {
+            Logger.getLogger(MultiThread.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return topicTree;
     }
 
     /**
@@ -89,7 +164,6 @@ public class Evaluate {
             loadUserJudgements(userId);
             // initialization for client side user profile
             profile = new Profile(userId);
-            System.out.println("User id: " + userId);
 
             double meanAvgPrec = 0.0;
             // Number of queries evaluated
@@ -136,33 +210,46 @@ public class Evaluate {
             totalMAP += meanAvgPrec;
             // totalQueries = total number of queries for 'n' users
             totalQueries += numQueries;
-            /**
-             * computing KL-Divergence from true user profile to noisy user
-             * profile.
-             */
-            double klDivergence = (double) _searcher.getUserProfile().calculateKLDivergence(profile);
-            totalKL += klDivergence;
             // compute MAP for the current user
             double MAP = meanAvgPrec / numQueries;
-            // compute mutual information for the current user
-            double mutualInfo = computeNMI.calculateNMI(listOfUserQuery, listOfCoverQuery);
-            // totalMI = sum of all MI computed for 'n' users
-            totalNMI += mutualInfo;
-            double GoAScore = computeGoA.evaluateComponents(profile);
-            totalGoA += GoAScore;
-            writer.write(countUsers + "\t" + Integer.parseInt(userId) + "\t" + MAP + "\t" + klDivergence + "\t" + mutualInfo + "\t" + GoAScore + "\n");
+
+            double klDivergence = 0;
+            double mutualInfo = 0;
+            double met1 = 0;
+            double met2 = 0;
+
+            if (RunTimeConfig.NumberOfCoverQuery != 0) {
+                // computing KL-Divergence from true user profile to noisy user profile.
+                klDivergence = (double) _searcher.getUserProfile().calculateKLDivergence(profile);
+                // totalKL = sum of all LL-Divergence computed for 'n' users
+                totalKL += klDivergence;
+
+                // compute mutual information for the current user
+                mutualInfo = computeNMI.calculateNMI(listOfUserQuery, listOfCoverQuery);
+                // totalMI = sum of all MI computed for 'n' users
+                totalNMI += mutualInfo;
+
+                met1 = metric1.evaluateComponents(profile);
+                totalMet1 += met1;
+
+                met2 = metric2.evaluateTransitions(profile);
+                totalMet2 += met2;
+            }
+            writer.write(countUsers + "\t" + Integer.parseInt(userId) + "\t" + MAP + "\t" + klDivergence + "\t" + mutualInfo + "\t" + met1 + "\t" + met2 + "\n");
             writer.flush();
-            System.out.printf("%-8d\t%-8d\t%.8f\t%.8f\t%.8f\t%.8f\n", countUsers, Integer.parseInt(userId), MAP, klDivergence, mutualInfo, GoAScore);
+            System.out.printf("%-8d\t%-8d\t%.8f\t%.8f\t%.8f\t%.8f\t%.8f\n", countUsers, Integer.parseInt(userId), MAP, klDivergence, mutualInfo, met1, met2);
         }
 
         double avgKL = 0;
         double avgMI = 0;
-        double avgGoA = 0;
+        double avgMet1 = 0;
+        double avgMet2 = 0;
         double finalMAP = totalMAP / totalQueries;
         if (countUsers > 0) {
             avgKL = totalKL / countUsers;
             avgMI = totalNMI / countUsers;
-            avgGoA = totalGoA / countUsers;
+            avgMet1 = totalMet1 / countUsers;
+            avgMet2 = totalMet2 / countUsers;
         }
 
         writer.write("\n************Result after full pipeline execution for n users**************" + "\n");
@@ -171,11 +258,12 @@ public class Evaluate {
         writer.write("MAP : " + finalMAP + "\n");
         writer.write("Average KL : " + avgKL + "\n");
         writer.write("Average MI : " + avgMI + "\n");
-        writer.write("Average GoA : " + avgGoA + "\n");
+        writer.write("Average Plausibility Ranking : " + avgMet1 + "\n");
+        writer.write("Average Plausibility Ranking (with transition) : " + avgMet2 + "\n");
         writer.flush();
         writer.close();
 
-        String retValue = countUsers + "\t" + totalQueries + "\t" + totalMAP + "\t" + totalKL + "\t" + totalNMI + "\t" + totalGoA;
+        String retValue = countUsers + "\t" + totalQueries + "\t" + totalMAP + "\t" + totalKL + "\t" + totalNMI + "\t" + avgMet1 + "\t" + avgMet2;
         return retValue;
     }
 

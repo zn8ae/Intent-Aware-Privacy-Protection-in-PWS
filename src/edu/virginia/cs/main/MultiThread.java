@@ -32,10 +32,14 @@ import org.xml.sax.SAXException;
 public class MultiThread {
 
     public static void main(String[] args) throws Exception {
+        long startTime = System.nanoTime();
         MultiThread ml = new MultiThread();
         ml.loadParameters();
         ml.doInitialization();
         ml.createThreads();
+        long endTime = System.nanoTime();
+        double output = (endTime - startTime) / (60.0 * 1000000000);
+        System.out.println("Total execution time = " + Math.round(output * 10000) / 10000.00 + " minutes.");
     }
 
     /**
@@ -58,6 +62,7 @@ public class MultiThread {
             DeploymentConfig.AolDocFreqRecord = br.readLine().replace("AOL document frequency record =", "").trim();
             DeploymentConfig.OdpHierarchyRecord = br.readLine().replace("ODP hierarchy file =", "").trim();
             DeploymentConfig.BackgroundKnowledge = br.readLine().replace("background knowledge file =", "").trim();
+            DeploymentConfig.TransitionProbability = br.readLine().replace("transition probability file =", "").trim();
             br.close();
         } catch (IOException ex) {
             Logger.getLogger(MultiThread.class.getName()).log(Level.SEVERE, null, ex);
@@ -149,12 +154,6 @@ public class MultiThread {
             StaticData.loadRefModel(DeploymentConfig.ReferenceModelPath);
             StaticData.loadIDFRecord(DeploymentConfig.AolDocFreqRecord);
 
-            TopicTree tree = createTopicTree(4);
-            if (tree == null) {
-                System.err.println("Failed to load ODP category hierarchy");
-                System.exit(1);
-            }
-
             int limit = allUserId.size() / RunTimeConfig.NumberOfThreads;
             for (int i = 0; i < RunTimeConfig.NumberOfThreads; i++) {
                 int start = i * limit;
@@ -164,7 +163,7 @@ public class MultiThread {
                 } else {
                     list = new ArrayList<>(allUserId.subList(start, start + limit));
                 }
-                myT[i] = new MyThread(list, "thread_" + i, tree);
+                myT[i] = new MyThread(list, "thread_" + i);
                 myT[i].start();
             }
             for (int i = 0; i < RunTimeConfig.NumberOfThreads; i++) {
@@ -175,7 +174,8 @@ public class MultiThread {
             double totalKLDivergence = 0.0;
             double totalMI = 0.0;
             double totalMAP = 0.0;
-            double totalGoA = 0.0;
+            double totalMet1 = 0.0;
+            double totalMet2 = 0.0;
             int totalUsers = 0;
             double totalQueries = 0;
             for (int i = 0; i < RunTimeConfig.NumberOfThreads; i++) {
@@ -185,12 +185,14 @@ public class MultiThread {
                 totalMAP += Double.valueOf(result[2]);
                 totalKLDivergence += Double.valueOf(result[3]);
                 totalMI += Double.valueOf(result[4]);
-                totalGoA += Double.valueOf(result[5]);
+                totalMet1 += Double.valueOf(result[5]);
+                totalMet2 += Double.valueOf(result[6]);
             }
             double finalKL = totalKLDivergence / totalUsers;
             double finalMI = totalMI / totalUsers;
             double finalMAP = totalMAP / totalQueries;
-            double finalGoA = totalGoA / totalUsers;
+            double finalMetric1 = totalMet1 / totalUsers;
+            double finalMetric2 = totalMet2 / totalUsers;
             FileWriter fw = new FileWriter("model-output-files/final_output.txt");
             fw.write("**************Parameter Settings**************\n");
             fw.write("Number of cover queries = " + RunTimeConfig.NumberOfCoverQuery + "\n");
@@ -200,7 +202,8 @@ public class MultiThread {
             fw.write("Averge MAP = " + finalMAP + "\n");
             fw.write("Average KL-Divergence = " + finalKL + "\n");
             fw.write("Average Mutual Information = " + finalMI + "\n");
-            fw.write("Average Goodness of Alignment Score = " + finalGoA + "\n");
+            fw.write("Average Plausibility Ranking = " + finalMetric1 + "\n");
+            fw.write("Average Plausibility Ranking (with transition) = " + finalMetric2 + "\n");
             fw.close();
         } catch (InterruptedException | NumberFormatException | IOException ex) {
             Logger.getLogger(MultiThread.class.getName()).log(Level.SEVERE, null, ex);
@@ -214,12 +217,10 @@ class MyThread implements Runnable {
     private final ArrayList<String> userIds;
     private final String threadId;
     private String result;
-    private final TopicTree topicTree;
 
-    public MyThread(ArrayList<String> listUsers, String id, TopicTree tree) {
+    public MyThread(ArrayList<String> listUsers, String id) {
         this.userIds = listUsers;
         this.threadId = id;
-        this.topicTree = tree;
     }
 
     /**
@@ -228,7 +229,7 @@ class MyThread implements Runnable {
     @Override
     public void run() {
         try {
-            Evaluate evaluate = new Evaluate(topicTree);
+            Evaluate evaluate = new Evaluate();
             result = evaluate.startEvaluation(userIds, threadId);
         } catch (Throwable ex) {
             Logger.getLogger(MyThread.class.getName()).log(Level.SEVERE, null, ex);

@@ -18,4 +18,5 @@ public class DeploymentConfig {
     public static String AolDocFreqRecord;
     public static String OdpHierarchyRecord;
     public static String BackgroundKnowledge;
+    public static String TransitionProbability;
 }

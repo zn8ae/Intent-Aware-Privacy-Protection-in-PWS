@@ -14,11 +14,11 @@ import static edu.virginia.cs.extra.Helper.getRandom;
 import edu.virginia.cs.interfaces.TreeNode;
 import edu.virginia.cs.object.Topic;
 import edu.virginia.cs.object.UserQuery;
+import edu.virginia.cs.user.Intent;
 import edu.virginia.cs.user.Profile;
 import edu.virginia.cs.utility.TextTokenizer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  *
@@ -64,10 +64,6 @@ public class GenerateCoverQuery {
      * @return list of integers
      */
     private int getBucketNumber(TopicTreeNode queryTopicNode, UserQuery query) {
-        if (queryTopicNode == null) {
-            System.out.println("Error found");
-            System.out.println(query.getQuery_text());
-        }
         Topic topic = queryTopicNode.getTopic();
         List<String> tokens = tokenizer.TokenizeText(query.getQuery_text());
         String modifiedQuery = "";
@@ -162,11 +158,6 @@ public class GenerateCoverQuery {
          * Check if current query intent is the parent of previous query intent,
          * then sequential editing is true.
          */
-//        System.out.println(previousQuery.getQuery_intent().getName());
-//        Intent temp = previousQuery.getQuery_intent();
-//        if (temp.getParent() == null) {
-//            System.out.println(((Intent) previousQuery.getQuery_intent().getParent()).getName());
-//        }
         if (currentQuery.getQuery_intent().isParent(previousQuery.getQuery_intent())) {
             return 1;
         }
@@ -218,7 +209,8 @@ public class GenerateCoverQuery {
 
         /* step 2. infer the bucket number for the user query */
         if (topicNode == null) {
-            System.out.println("topic node not found : " + topic_name);
+            System.err.println("Fatal Exception: Topic (" + topic_name + ") not found. Exiting...");
+            System.exit(1);
         }
         int bucket_num = getBucketNumber(topicNode, query);
 
@@ -273,8 +265,7 @@ public class GenerateCoverQuery {
                      * Cover query should be generated from parent topic of the
                      * previous cover query.
                      */
-                    TreeNode parent = previousCoverQueries.get(count).getQuery_intent().getParent();
-                    String parent_name = ((TopicTreeNode) parent).getTopic_name();
+                    String parent_name = ((Intent) previousCoverQueries.get(count).getQuery_intent().getParent()).getName();
                     TopicTreeNode cover_node = (TopicTreeNode) topicTree.getTreeNode(parent_name);
                     coverQuery = generateCoverQuery(bucket_num, cover_node, query, profile);
                 } else {

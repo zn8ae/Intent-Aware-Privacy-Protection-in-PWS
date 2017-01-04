@@ -1,0 +1,90 @@
+821685
+initial_state to initial_state 0
+initial_state to up1 0
+initial_state to up2 0
+initial_state to down1 78
+initial_state to down2 11461
+initial_state to same_state 0
+initial_state to same_parent 0
+initial_state to same_grand_parent 0
+initial_state to others 245700
+
+up1 to initial_state 0
+up1 to up1 0
+up1 to up2 0
+up1 to down1 62
+up1 to down2 0
+up1 to same_state 110
+up1 to same_parent 3
+up1 to same_grand_parent 9
+up1 to others 184
+
+up2 to initial_state 0
+up2 to up1 0
+up2 to up2 0
+up2 to down1 0
+up2 to down2 1
+up2 to same_state 0
+up2 to same_parent 0
+up2 to same_grand_parent 0
+up2 to others 2
+
+down1 to initial_state 0
+down1 to up1 31
+down1 to up2 0
+down1 to down1 1
+down1 to down2 1
+down1 to same_state 135
+down1 to same_parent 34
+down1 to same_grand_parent 26
+down2 to others 203
+
+down2 to initial_state 0
+down2 to up1 1
+down2 to up2 0
+down2 to down1 237
+down2 to down2 0
+down2 to same_state 2964
+down2 to same_parent 78
+down2 to same_grand_parent 278
+down2 to others 7560
+
+same_state to initial_state 0
+same_state to up1 125
+same_state to up2 2
+same_state to down1 108
+same_state to down2 1
+same_state to same_state 58852
+same_state to same_parent 2421
+same_state to same_grand_parent 7405
+same_state to others 38209
+
+same_parent to initial_state 0
+same_parent to up1 32
+same_parent to up2 0
+same_parent to down1 1
+same_parent to down2 0
+same_parent to same_state 2478
+same_parent to same_parent 1556
+same_parent to same_grand_parent 833
+same_parent to others 3425
+
+same_grand_parent to initial_state 0
+same_grand_parent to up1 23
+same_grand_parent to up2 0
+same_grand_parent to down1 5
+same_grand_parent to down2 0
+same_grand_parent to same_state 7326
+same_grand_parent to same_parent 869
+same_grand_parent to same_grand_parent 6870
+same_grand_parent to others 15128
+
+others to initial_state 0
+others to up1 431
+others to up2 3
+others to down1 184
+others to down2 2
+others to same_state 111366
+others to same_parent 9723
+others to same_grand_parent 38202
+others to others 246946

@@ -96,7 +96,7 @@ public class Personalization {
             for (Map.Entry<String, Float> entry : tempMap.entrySet()) {
                 float score = 0;
                 // Giving 50% weight to personalization and 50% to OkapiBM25.
-                score = 0.5f * (1.0f / (i + 1)) + 0.5f * (1.0f / (Integer.parseInt(entry.getKey() + 1)));
+                score = 0.25f * (1.0f / (i + 1)) + 0.75f * (1.0f / (Integer.parseInt(entry.getKey() + 1)));
                 mapDocToScore.put(entry.getKey(), score);
                 /**
                  * Storing the final score of documents computed through Borda's

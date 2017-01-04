@@ -25,6 +25,13 @@ public class TopicTree implements Tree {
         this.levelWiseNodeMap = new HashMap<>();
     }
 
+    public TopicTree(TopicTree tree) {
+        this.nodeMap = new HashMap<>();
+        this.nodeMap.putAll(tree.getNodeMap());
+        this.levelWiseNodeMap = new HashMap<>();
+        this.levelWiseNodeMap.putAll(tree.getLevelWiseNodeMap());
+    }
+
     @Override
     public void setNodes(HashMap<String, TreeNode> nodeMap) {
         this.nodeMap = nodeMap;
@@ -57,6 +64,10 @@ public class TopicTree implements Tree {
 
     public List<TreeNode> getNodesOfLevel(int level) {
         return levelWiseNodeMap.get(level);
+    }
+
+    public HashMap<Integer, List<TreeNode>> getLevelWiseNodeMap() {
+        return this.levelWiseNodeMap;
     }
 
 }
