@@ -68,6 +68,7 @@ public class Metric2 {
                 transitionProbMap.put(split[0] + "/" + split[2], prob);
             }
             br.close();
+            System.out.println(transitionProbMap.toString());
         } catch (FileNotFoundException ex) {
             Logger.getLogger(Metric2.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {
@@ -158,7 +159,14 @@ public class Metric2 {
                 continue;
             }
 
-            double score = Math.log(transitionProbMap.get(previous_transition_status + "/" + transition_status));
+            Double refProb = transitionProbMap.get(previous_transition_status + "/" + transition_status);
+            double score = 0;
+            if (refProb == null) {
+                continue;
+            } else if (refProb != 0) {
+                score = Math.log(refProb);
+            }
+
             if (scoreMap.containsKey("true_sequence")) {
                 scoreMap.put("true_sequence", scoreMap.get("true_sequence") + score);
             } else {
@@ -172,7 +180,7 @@ public class Metric2 {
 
                 double cover_score;
                 if (previous_cover_status.isEmpty()) {
-                    cover_score = Math.log(transitionProbMap.get("initial_state/" + cover_status));
+                    cover_score = Math.log(transitionProbMap.get("initial_state" + "/" + cover_status));
                 } else {
                     cover_score = Math.log(transitionProbMap.get(previous_cover_status.get(index) + "/" + cover_status));
                 }
