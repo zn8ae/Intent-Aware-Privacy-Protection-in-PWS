@@ -68,7 +68,6 @@ public class Metric2 {
                 transitionProbMap.put(split[0] + "/" + split[2], prob);
             }
             br.close();
-            System.out.println(transitionProbMap.toString());
         } catch (FileNotFoundException ex) {
             Logger.getLogger(Metric2.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {
