@@ -1,6 +1,6 @@
 number of cover queries = 2
 client side re-ranking = on
-number of threads = 20
+number of threads = 1
 total documents in AOL index = 1051483
 remove stopwords from cover query = no
 generate stemmed cover query = no
@@ -11,3 +11,4 @@ reference model file = data/Reference-Model
 AOL document frequency record = data/AOL-Dictionary
 ODP hierarchy file = data/ODP-doc-content.xml
 background knowledge file = data/Background-Information
+transition probability file = data/Transition-Probabilities

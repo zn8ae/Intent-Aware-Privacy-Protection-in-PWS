@@ -265,6 +265,7 @@ public class Evaluate {
 
         String retValue = countUsers + "\t" + totalQueries + "\t" + totalMAP + "\t" + totalKL + "\t" + totalNMI + "\t" + avgMet1 + "\t" + avgMet2;
         return retValue;
+        
     }
 
     /**
@@ -288,6 +289,7 @@ public class Evaluate {
             // if no cover query is required, just submit the original query
             avgp = submitOriginalQuery(query);
         } else {
+            
             ArrayList<UserQuery> coverQueries;
             /**
              * If the user is repeating a query in the same session, same set of
@@ -296,6 +298,15 @@ public class Evaluate {
             UserQuery repeatQuery = profile.getLastSession().checkRepeat(query);
             if (repeatQuery == null) {
                 coverQueries = gCoverQuery.generateCoverQueries(profile, query);
+                System.out.println("Original Query: " + query.getQuery_text());
+                System.out.print("Cover Queries: ");
+                for(UserQuery q : coverQueries) {
+                    System.out.print(q.getQuery_text() + "\t");
+                }
+                System.out.println();
+                
+                //I need to print the coverQuery.
+                //Save it into file
             } else {
                 /* User has repeated a query in the same session */
                 coverQueries = repeatQuery.getCover_queries();

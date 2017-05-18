@@ -75,35 +75,35 @@ public class GenerateCoverQuery {
         query.setQuery_length(query_length);
         int bucket_num;
 
-        topic.prepare(SEARCHER, queryTopicNode.getTopic_name(), query_length);
+        topic.prepare(SEARCHER, queryTopicNode.getTopic_name(), query_length, queryTopicNode);
         switch (query_length) {
             case 1: {
                 Double[] probArray = topic.getProbArrayUnigram();
-                double prob = topic.getProbabilityUnigram(modifiedQuery);
+                double prob = topic.getProbabilityUnigram(modifiedQuery, queryTopicNode);
                 bucket_num = getBucketNumber(prob, probArray);
                 break;
             }
             case 2: {
                 Double[] probArray = topic.getProbArrayBigram();
-                double prob = topic.getProbabilityBigram(modifiedQuery, true);
+                double prob = topic.getProbabilityBigram(modifiedQuery, true, queryTopicNode);
                 bucket_num = getBucketNumber(prob, probArray);
                 break;
             }
             case 3: {
                 Double[] probArray = topic.getProbArrayTrigram();
-                double prob = topic.getProbabilityTrigram(modifiedQuery, true);
+                double prob = topic.getProbabilityTrigram(modifiedQuery, true, queryTopicNode);
                 bucket_num = getBucketNumber(prob, probArray);
                 break;
             }
             case 4: {
                 Double[] probArray = topic.getProbArrayFourgram();
-                double prob = topic.getProbabilityFourgram(modifiedQuery, true);
+                double prob = topic.getProbabilityFourgram(modifiedQuery, true, queryTopicNode);
                 bucket_num = getBucketNumber(prob, probArray);
                 break;
             }
             default: {
                 Double[] probArray = topic.getProbArrayFourgram();
-                double prob = topic.getProbabilityNgram(modifiedQuery, query_length);
+                double prob = topic.getProbabilityNgram(modifiedQuery, query_length, queryTopicNode);
                 bucket_num = getBucketNumber(prob, probArray);
                 break;
             }
@@ -314,7 +314,7 @@ public class GenerateCoverQuery {
             }
             numberOfAttempts++;
         }
-
+        
         return coverQueries;
     }
 }

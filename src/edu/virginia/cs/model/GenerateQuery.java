@@ -58,7 +58,7 @@ public class GenerateQuery {
      */
     public UserQuery getCQfromUnigramLM(int bucket_num, TopicTreeNode cover_node, UserQuery currentQuery, Profile profile) {
         Topic coverQueryTopic = cover_node.getTopic();
-        coverQueryTopic.prepare(SEARCHER, cover_node.getTopic_name(), 1);
+        coverQueryTopic.prepare(SEARCHER, cover_node.getTopic_name(), 1, cover_node);
         if (coverQueryTopic.isEmpty()) {
             return null;
         }
@@ -66,7 +66,7 @@ public class GenerateQuery {
         Double[] probArray = coverQueryTopic.getProbArrayUnigram();
 
         for (String unigram : coverQueryTopic.getUnigramLM().keySet()) {
-            double prob = coverQueryTopic.getProbabilityUnigram(unigram);
+            double prob = coverQueryTopic.getProbabilityUnigram(unigram, cover_node);
             int bNum = getBucketNumber(prob, probArray);
             if (bNum == bucket_num) {
                 possibleCoverQ.add(unigram);
@@ -119,12 +119,12 @@ public class GenerateQuery {
      * @param bucketNum
      * @return
      */
-    private String getUniGramFromLM(int bucket_num, Topic coverQueryTopic) {
+    private String getUniGramFromLM(int bucket_num, Topic coverQueryTopic, TopicTreeNode cover_node) {
         ArrayList<String> possibleCoverQ = new ArrayList<>();
         Double[] probArray = coverQueryTopic.getProbArrayUnigram();
 
         for (String unigram : coverQueryTopic.getUnigramLM().keySet()) {
-            double prob = coverQueryTopic.getProbabilityUnigram(unigram);
+            double prob = coverQueryTopic.getProbabilityUnigram(unigram, cover_node);
             int bNum = getBucketNumber(prob, probArray);
             if (bNum == bucket_num) {
                 possibleCoverQ.add(unigram);
@@ -155,7 +155,7 @@ public class GenerateQuery {
      */
     public UserQuery getCQfromBigramLM(int bucket_num, TopicTreeNode cover_node, UserQuery currentQuery, Profile profile) {
         Topic coverQueryTopic = cover_node.getTopic();
-        coverQueryTopic.prepare(SEARCHER, cover_node.getTopic_name(), 2);
+        coverQueryTopic.prepare(SEARCHER, cover_node.getTopic_name(), 2, cover_node);
         if (coverQueryTopic.isEmpty()) {
             return null;
         }
@@ -163,7 +163,7 @@ public class GenerateQuery {
         Double[] probArray = coverQueryTopic.getProbArrayBigram();
 
         for (String bigram : coverQueryTopic.getBigramLM().keySet()) {
-            double prob = coverQueryTopic.getProbabilityBigram(bigram, true);
+            double prob = coverQueryTopic.getProbabilityBigram(bigram, true, cover_node);
             int bNum = getBucketNumber(prob, probArray);
             if (bNum == bucket_num) {
                 possibleCoverQ.add(bigram);
@@ -218,12 +218,12 @@ public class GenerateQuery {
      * @param unigram
      * @return
      */
-    private String getCQfromBigramLM(int bucket_num, Topic coverQueryTopic, String unigram) {
+    private String getCQfromBigramLM(int bucket_num, Topic coverQueryTopic, String unigram, TopicTreeNode cover_node) {
         ArrayList<String> possibleCoverQ = new ArrayList<>();
         Double[] probArray = coverQueryTopic.getProbArrayBigram();
 
         for (String bigram : coverQueryTopic.getBigramLM().keySet()) {
-            double prob = coverQueryTopic.getProbabilityBigram(bigram, true);
+            double prob = coverQueryTopic.getProbabilityBigram(bigram, true, cover_node);
             String[] split = bigram.split(" ");
             String prevUnigram = split[0];
             if (prevUnigram.equals(unigram)) {
@@ -259,7 +259,7 @@ public class GenerateQuery {
      */
     public UserQuery getCQfromTrigramLM(int bucket_num, TopicTreeNode cover_node, UserQuery currentQuery, Profile profile) {
         Topic coverQueryTopic = cover_node.getTopic();
-        coverQueryTopic.prepare(SEARCHER, cover_node.getTopic_name(), 3);
+        coverQueryTopic.prepare(SEARCHER, cover_node.getTopic_name(), 3, cover_node);
         if (coverQueryTopic.isEmpty()) {
             return null;
         }
@@ -267,7 +267,7 @@ public class GenerateQuery {
         Double[] probArray = coverQueryTopic.getProbArrayTrigram();
 
         for (String trigram : coverQueryTopic.getTrigramLM().keySet()) {
-            double prob = coverQueryTopic.getProbabilityTrigram(trigram, true);
+            double prob = coverQueryTopic.getProbabilityTrigram(trigram, true, cover_node);
             int bNum = getBucketNumber(prob, probArray);
             if (bNum == bucket_num) {
                 possibleCoverQ.add(trigram);
@@ -317,12 +317,12 @@ public class GenerateQuery {
      * @param bigram
      * @return
      */
-    private String getTriGramFromLM(int bucket_num, Topic coverQueryTopic, String bigram) {
+    private String getTriGramFromLM(int bucket_num, Topic coverQueryTopic, String bigram, TopicTreeNode cover_node) {
         ArrayList<String> possibleCoverQ = new ArrayList<>();
         Double[] probArray = coverQueryTopic.getProbArrayTrigram();
 
         for (String trigram : coverQueryTopic.getTrigramLM().keySet()) {
-            double prob = coverQueryTopic.getProbabilityTrigram(trigram, true);
+            double prob = coverQueryTopic.getProbabilityTrigram(trigram, true, cover_node);
             String[] split = trigram.split(" ");
             String prevBigram = split[0] + " " + split[1];
             if (prevBigram.equals(bigram)) {
@@ -353,7 +353,7 @@ public class GenerateQuery {
      */
     public UserQuery getCQfromFourgramLM(int bucket_num, TopicTreeNode cover_node, UserQuery currentQuery, Profile profile) {
         Topic coverQueryTopic = cover_node.getTopic();
-        coverQueryTopic.prepare(SEARCHER, cover_node.getTopic_name(), 4);
+        coverQueryTopic.prepare(SEARCHER, cover_node.getTopic_name(), 4, cover_node);
         if (coverQueryTopic.isEmpty()) {
             return null;
         }
@@ -361,7 +361,7 @@ public class GenerateQuery {
         Double[] probArray = coverQueryTopic.getProbArrayFourgram();
 
         for (String trigram : coverQueryTopic.getFourgramLM().keySet()) {
-            double prob = coverQueryTopic.getProbabilityFourgram(trigram, true);
+            double prob = coverQueryTopic.getProbabilityFourgram(trigram, true, cover_node);
             int bNum = getBucketNumber(prob, probArray);
             if (bNum == bucket_num) {
                 possibleCoverQ.add(trigram);
@@ -411,12 +411,12 @@ public class GenerateQuery {
      * @param trigram
      * @return
      */
-    private String getFourGramFromLM(int bucket_num, Topic coverQueryTopic, String trigram) {
+    private String getFourGramFromLM(int bucket_num, Topic coverQueryTopic, String trigram, TopicTreeNode cover_node) {
         ArrayList<String> possibleCoverQ = new ArrayList<>();
         Double[] probArray = coverQueryTopic.getProbArrayFourgram();
 
         for (String fourgram : coverQueryTopic.getFourgramLM().keySet()) {
-            double prob = coverQueryTopic.getProbabilityFourgram(fourgram, true);
+            double prob = coverQueryTopic.getProbabilityFourgram(fourgram, true, cover_node);
             String[] split = fourgram.split(" ");
             String prevTrigram = split[0] + " " + split[1] + " " + split[2];
             if (prevTrigram.equals(trigram)) {
@@ -448,7 +448,7 @@ public class GenerateQuery {
      */
     public UserQuery getCQfromNgramLM(int query_length, int bucket_num, TopicTreeNode cover_node, UserQuery currentQuery, Profile profile) {
         Topic coverQueryTopic = cover_node.getTopic();
-        coverQueryTopic.prepare(SEARCHER, cover_node.getTopic_name(), -1);
+        coverQueryTopic.prepare(SEARCHER, cover_node.getTopic_name(), -1, cover_node);
         if (coverQueryTopic.isEmpty()) {
             return null;
         }
@@ -462,7 +462,7 @@ public class GenerateQuery {
                     trigram += cQuery.get(x) + " ";
                 }
                 trigram = trigram.trim();
-                tempFourgram = getFourGramFromLM(bucket_num, coverQueryTopic, trigram);
+                tempFourgram = getFourGramFromLM(bucket_num, coverQueryTopic, trigram, cover_node);
             } else {
                 tempFourgram = null;
             }
@@ -471,7 +471,7 @@ public class GenerateQuery {
                 if (cQuery.size() >= 2) {
                     int l = cQuery.size() - 1;
                     String bigram = cQuery.get(l - 1) + " " + cQuery.get(l);
-                    tempTrigram = getTriGramFromLM(bucket_num, coverQueryTopic, bigram);
+                    tempTrigram = getTriGramFromLM(bucket_num, coverQueryTopic, bigram, cover_node);
                 } else {
                     tempTrigram = null;
                 }
@@ -479,12 +479,12 @@ public class GenerateQuery {
                     String tempBigram;
                     if (cQuery.size() >= 1) {
                         String unigram = cQuery.get(cQuery.size() - 1);
-                        tempBigram = getCQfromBigramLM(bucket_num, coverQueryTopic, unigram);
+                        tempBigram = getCQfromBigramLM(bucket_num, coverQueryTopic, unigram, cover_node);
                     } else {
                         tempBigram = null;
                     }
                     if (tempBigram == null) {
-                        String tempUnigram = getUniGramFromLM(bucket_num, coverQueryTopic);
+                        String tempUnigram = getUniGramFromLM(bucket_num, coverQueryTopic, cover_node);
                         if (tempUnigram != null) {
                             cQuery.add(tempUnigram);
                         }

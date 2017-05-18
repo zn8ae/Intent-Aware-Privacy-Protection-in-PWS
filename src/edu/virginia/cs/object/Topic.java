@@ -8,6 +8,7 @@ package edu.virginia.cs.object;
 import edu.virginia.cs.config.RunTimeConfig;
 import edu.virginia.cs.config.StaticData;
 import edu.virginia.cs.engine.Searcher;
+import edu.virginia.cs.model.TopicTreeNode;
 import edu.virginia.cs.utility.SortMap;
 import edu.virginia.cs.utility.TextTokenizer;
 import java.util.ArrayList;
@@ -22,13 +23,14 @@ import java.util.Map;
 public class Topic {
 
     private final int BUCKET_SIZE = 10;
-    private final double LAMBDA = 0.9;
+    private final double LAMBDA = 0.1;
+    private final double GAMMA = 0.1;
 
     private HashMap<String, Integer> unigramLM;
     private HashMap<String, Integer> bigramLM;
     private HashMap<String, Integer> trigramLM;
     private HashMap<String, Integer> fourgramLM;
-    private final Double[] probArrayUnigram;
+     private final Double[] probArrayUnigram;
     private final Double[] probArrayBigram;
     private final Double[] probArrayTrigram;
     private final Double[] probArrayFourgram;
@@ -240,17 +242,27 @@ public class Topic {
      * @param unigram
      * @return
      */
-    public double getProbabilityUnigram(String unigram) {
+    public double getProbabilityUnigram(String unigram, TopicTreeNode queryTopicNode) {
         double prob;
+        TopicTreeNode parent = (TopicTreeNode)(queryTopicNode.getParent());
         /* Computing probability of a unigram using linear interpolation smoothing */
         if (unigramLM.containsKey(unigram)) {
-            prob = (1.0 - LAMBDA) * (unigramLM.get(unigram) / totalUnigrams) + LAMBDA * getReferenceProbability(unigram);
+            if(parent!=null) {
+            prob = (1.0 - LAMBDA - GAMMA) * (unigramLM.get(unigram) / totalUnigrams) 
+                    + LAMBDA * getReferenceProbability(unigram)
+                    + GAMMA * parent.getTopic().getProbabilityUnigram(unigram, parent);
+            } else {
+                prob = (1.0 - LAMBDA) * (unigramLM.get(unigram) / totalUnigrams) 
+                    + LAMBDA * getReferenceProbability(unigram);
+            }
+
         } else {
             prob = LAMBDA * getReferenceProbability(unigram);
         }
         return prob;
     }
 
+    
     /**
      * Computes joint probability or conditional probability of a bigram.
      *
@@ -258,18 +270,28 @@ public class Topic {
      * @param isJoint
      * @return
      */
-    public double getProbabilityBigram(String bigram, boolean isJoint) {
+    public double getProbabilityBigram(String bigram, boolean isJoint, TopicTreeNode queryTopicNode) {
         double prob;
         /* Computing probability of a bigram using linear interpolation smoothing */
+        TopicTreeNode parent = (TopicTreeNode)(queryTopicNode.getParent());
         String[] split = bigram.split(" ");
         if (bigramLM.containsKey(bigram)) {
+            if(parent!=null) {
+            prob = (1.0 - LAMBDA - GAMMA) * (bigramLM.get(bigram) / unigramLM.get(split[0]));
+            } else {
             prob = (1.0 - LAMBDA) * (bigramLM.get(bigram) / unigramLM.get(split[0]));
+            }
         } else {
             prob = 0.0;
         }
-        prob += LAMBDA * getProbabilityUnigram(split[0]);
+        if(parent!=null){
+        prob = prob + LAMBDA * getProbabilityUnigram(split[0], queryTopicNode)
+                + GAMMA * parent.getTopic().getProbabilityBigram(bigram, isJoint, parent);
+        } else {
+           prob = prob + LAMBDA * getProbabilityUnigram(split[0], queryTopicNode);
+        }
         if (isJoint) {
-            prob *= getProbabilityUnigram(split[0]);
+            prob *= getProbabilityUnigram(split[0], queryTopicNode);
         }
         return prob;
     }
@@ -281,21 +303,31 @@ public class Topic {
      * @param isJoint
      * @return
      */
-    public double getProbabilityTrigram(String trigram, boolean isJoint) {
+    public double getProbabilityTrigram(String trigram, boolean isJoint, TopicTreeNode queryTopicNode) {
         double prob;
         /* Computing probability of a trigram using linear interpolation smoothing */
+        TopicTreeNode parent = (TopicTreeNode)(queryTopicNode.getParent());
         String[] split = trigram.split(" ");
         String prevBigram = split[0] + " " + split[1];
         if (trigramLM.containsKey(trigram)) {
+            if(parent!=null) {
+            prob = (1.0 - LAMBDA - GAMMA) * (trigramLM.get(trigram) / bigramLM.get(prevBigram));
+            } else {
             prob = (1.0 - LAMBDA) * (trigramLM.get(trigram) / bigramLM.get(prevBigram));
+            }
         } else {
             prob = 0.0;
         }
         String bigram = split[1] + " " + split[2];
-        prob += LAMBDA * getProbabilityBigram(bigram, false);
+        if(parent!=null) {
+            prob = prob + LAMBDA * getProbabilityBigram(bigram, false, queryTopicNode)
+                + GAMMA * parent.getTopic().getProbabilityTrigram(trigram, isJoint, parent);
+        } else {
+            prob = prob + LAMBDA * getProbabilityBigram(bigram, false, queryTopicNode);
+        }
         if (isJoint) {
-            prob *= getProbabilityBigram(prevBigram, false);
-            prob *= getProbabilityUnigram(split[0]);
+            prob *= getProbabilityBigram(prevBigram, false, queryTopicNode);
+            prob *= getProbabilityUnigram(split[0], queryTopicNode);
         }
         return prob;
     }
@@ -308,23 +340,33 @@ public class Topic {
      * @return if isJoint is true, returns joint probability, otherwise
      * conditional probability
      */
-    public double getProbabilityFourgram(String fourgram, boolean isJoint) {
+    public double getProbabilityFourgram(String fourgram, boolean isJoint, TopicTreeNode queryTopicNode) {
         double prob;
         /* Computing probability of a fourgram using linear interpolation smoothing */
+        TopicTreeNode parent = (TopicTreeNode)(queryTopicNode.getParent());
         String[] split = fourgram.split(" ");
         String prevTrigram = split[0] + " " + split[1] + " " + split[2];
         if (fourgramLM.containsKey(fourgram)) {
-            prob = (1.0 - LAMBDA) * (fourgramLM.get(fourgram) / trigramLM.get(prevTrigram));
+            if(parent!=null) {
+                prob = (1.0 - LAMBDA - GAMMA) * (fourgramLM.get(fourgram) / trigramLM.get(prevTrigram));
+            } else {
+                prob = (1.0 - LAMBDA) * (fourgramLM.get(fourgram) / trigramLM.get(prevTrigram));
+            }
         } else {
             prob = 0.0;
         }
         String trigram = split[1] + " " + split[2] + " " + split[3];
-        prob += LAMBDA * getProbabilityTrigram(trigram, false);
+        if(parent!=null) {
+            prob = prob + LAMBDA * getProbabilityTrigram(trigram, false, queryTopicNode)
+                + GAMMA * parent.getTopic().getProbabilityFourgram(fourgram, isJoint, parent);
+        } else {
+            prob = prob + LAMBDA * getProbabilityTrigram(trigram, false, queryTopicNode);
+        }
         if (isJoint) {
-            prob *= getProbabilityBigram(prevTrigram, false);
+            prob *= getProbabilityBigram(prevTrigram, false, queryTopicNode);
             String bigram = split[0] + " " + split[1];
-            prob *= getProbabilityBigram(bigram, false);
-            prob *= getProbabilityUnigram(split[0]);
+            prob *= getProbabilityBigram(bigram, false, queryTopicNode);
+            prob *= getProbabilityUnigram(split[0], queryTopicNode);
         }
         return prob;
     }
@@ -338,22 +380,22 @@ public class Topic {
      * @param n
      * @return
      */
-    public double getProbabilityNgram(String ngram, int n) {
+    public double getProbabilityNgram(String ngram, int n, TopicTreeNode queryTopicNode) {
         double prob = 1.0;
         /* Computing probability of a n-gram using linear interpolation smoothing */
         String[] split = ngram.split(" ");
         for (int i = split.length - 1; i >= 0; i--) {
             if (i >= 3) {
                 String fourgram = split[i - 3] + " " + split[i - 2] + " " + split[i - 1] + " " + split[i];
-                prob *= getProbabilityFourgram(fourgram, false);
+                prob *= getProbabilityFourgram(fourgram, false, queryTopicNode);
             } else if (i == 2) {
                 String trigram = split[i - 2] + " " + split[i - 1] + " " + split[i];
-                prob *= getProbabilityBigram(trigram, false);
+                prob *= getProbabilityBigram(trigram, false, queryTopicNode);
             } else if (i == 1) {
                 String bigram = split[i - 1] + " " + split[i];
-                prob *= getProbabilityBigram(bigram, false);
+                prob *= getProbabilityBigram(bigram, false, queryTopicNode);
             } else {
-                prob *= getProbabilityUnigram(split[0]);
+                prob *= getProbabilityUnigram(split[0], queryTopicNode);
             }
         }
         return prob;
@@ -364,7 +406,7 @@ public class Topic {
      *
      * @param param either unigram or bigram or trigram or fourgram
      */
-    public void setMaxMinProb(String param) {
+    public void setMaxMinProb(String param, TopicTreeNode queryTopicNode) {
         double max = -1.0;
         double min = -1.0;
         HashMap<String, Double> tempMap = new HashMap<>();
@@ -373,7 +415,7 @@ public class Topic {
                 return;
             }
             for (Map.Entry<String, Integer> entry : unigramLM.entrySet()) {
-                double prob = getProbabilityUnigram(entry.getKey());
+                double prob = getProbabilityUnigram(entry.getKey(), queryTopicNode);
                 tempMap.put(entry.getKey(), prob);
                 if (max < prob) {
                     max = prob;
@@ -400,7 +442,7 @@ public class Topic {
                 return;
             }
             for (Map.Entry<String, Integer> entry : bigramLM.entrySet()) {
-                double prob = getProbabilityBigram(entry.getKey(), true);
+                double prob = getProbabilityBigram(entry.getKey(), true, queryTopicNode);
                 tempMap.put(entry.getKey(), prob);
                 if (max < prob) {
                     max = prob;
@@ -427,7 +469,7 @@ public class Topic {
                 return;
             }
             for (Map.Entry<String, Integer> entry : trigramLM.entrySet()) {
-                double prob = getProbabilityTrigram(entry.getKey(), true);
+                double prob = getProbabilityTrigram(entry.getKey(), true, queryTopicNode);
                 tempMap.put(entry.getKey(), prob);
                 if (max < prob) {
                     max = prob;
@@ -454,7 +496,7 @@ public class Topic {
                 return;
             }
             for (Map.Entry<String, Integer> entry : fourgramLM.entrySet()) {
-                double prob = getProbabilityFourgram(entry.getKey(), true);
+                double prob = getProbabilityFourgram(entry.getKey(), true, queryTopicNode);
                 tempMap.put(entry.getKey(), prob);
                 if (max < prob) {
                     max = prob;
@@ -492,7 +534,7 @@ public class Topic {
         return nonNullElemExist;
     }
 
-    public boolean prepare(Searcher _searcher, String topic_name, int option) {
+    public boolean prepare(Searcher _searcher, String topic_name, int option, TopicTreeNode queryTopicNode) {
         ArrayList<String> documents = _searcher.search(topic_name, "topic", "modified_content");
         if (!documents.isEmpty()) {
             for (String content : documents) {
@@ -501,40 +543,40 @@ public class Topic {
             switch (option) {
                 case 1:
                     if (!checkForNull(probArrayUnigram)) {
-                        setMaxMinProb("unigram");
+                        setMaxMinProb("unigram", queryTopicNode);
                     }
                     break;
                 case 2:
                     if (!checkForNull(probArrayUnigram)) {
-                        setMaxMinProb("unigram");
+                        setMaxMinProb("unigram", queryTopicNode);
                     }
                     if (!checkForNull(probArrayBigram)) {
-                        setMaxMinProb("bigram");
+                        setMaxMinProb("bigram", queryTopicNode);
                     }
                     break;
                 case 3:
                     if (!checkForNull(probArrayUnigram)) {
-                        setMaxMinProb("unigram");
+                        setMaxMinProb("unigram", queryTopicNode);
                     }
                     if (!checkForNull(probArrayBigram)) {
-                        setMaxMinProb("bigram");
+                        setMaxMinProb("bigram", queryTopicNode);
                     }
                     if (!checkForNull(probArrayTrigram)) {
-                        setMaxMinProb("trigram");
+                        setMaxMinProb("trigram", queryTopicNode);
                     }
                     break;
                 default:
                     if (!checkForNull(probArrayUnigram)) {
-                        setMaxMinProb("unigram");
+                        setMaxMinProb("unigram", queryTopicNode);
                     }
                     if (!checkForNull(probArrayBigram)) {
-                        setMaxMinProb("bigram");
+                        setMaxMinProb("bigram", queryTopicNode);
                     }
                     if (!checkForNull(probArrayTrigram)) {
-                        setMaxMinProb("trigram");
+                        setMaxMinProb("trigram", queryTopicNode);
                     }
                     if (!checkForNull(probArrayFourgram)) {
-                        setMaxMinProb("fourgram");
+                        setMaxMinProb("fourgram", queryTopicNode);
                     }
                     break;
             }
